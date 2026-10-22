@@ -56,8 +56,8 @@ main{max-width:1380px}.rr-quick-nav{display:flex;gap:10px;overflow-x:auto;scroll
 <div id="grid" class="grid"></div>
 <section id="kids" class="rr-home-section" aria-labelledby="kidsHeading"><div class="section-head"><h2 id="kidsHeading">Kids & Family</h2><span class="small">Curated discovery, not verified age classifications</span></div><div class="rr-home-controls"><label for="rrAge">Browse preference</label><select id="rrAge"><option value="all">All family categories</option><option value="preschool">Preschool</option><option value="animation">Animation</option><option value="educational">Educational shows</option><option value="family">Family movies</option><option value="teen">Teen shows</option></select><label><input type="checkbox" id="rrHideTeen"> Hide teen suggestions on this browser</label></div><p class="rr-home-note">These are editorial groupings, not official age ratings. Please review individual titles before children watch. The hide option is a local viewing preference, not a secure parental control or age verification system. No videos autoplay.</p><div class="rr-family-grid" id="rrFamilyGroups"><p class="empty">Loading family discovery…</p></div><p class="rr-home-note">TV series data: <a href="https://www.tvmaze.com" target="_blank" rel="noopener noreferrer">TVmaze</a>. Family movie examples are local demo records; posters and age classifications are not verified.</p></section>
 <section id="watchlist"><div class="section-head"><h2>My Watchlist <span class="rr-saved-count" id="watchlistCount"></span></h2><span class="small">Sign in to sync across devices · local saves available as guest</span></div><div id="watchlistGrid" class="grid rr-saved-grid"></div><p id="watchlistEmpty" class="rr-saved-empty">Save a movie or show using the bookmark button to see it here.</p></section>
-<div class="section-head" id="movies"><h2>Movie search · Wikidata</h2><span class="small">Search above for live movie metadata · CC0</span></div>
-<div id="movieStatus" class="small">Search movies using Wikidata. Eligible Commons images are shown with attribution; movie ratings are not yet licensed. Example: Inception.</div>
+<div class="section-head" id="movies"><h2>Movie discovery · AMODB + Wikidata</h2><span class="small">Search above for live results from multiple sources</span></div>
+<div id="movieStatus" class="small">Search movies using AMODB, TVmaze and Wikidata. Images and ratings from AMODB are for development until commercial rights are confirmed.</div>
 <div class="section-head" id="theaters"><h2>Now in theaters</h2><span class="small">Find films playing on the big screen</span></div>
 <div id="theatersList" class="feature-grid"></div>
 <div class="section-head" id="upcoming-movies"><h2>Upcoming movies</h2><span class="small">Theatrical and streaming releases</span></div>
@@ -68,8 +68,8 @@ main{max-width:1380px}.rr-quick-nav{display:flex;gap:10px;overflow-x:auto;scroll
 <div id="updatesList" class="feature-grid"><p class="empty">Loading recent episodes…</p></div>
 <div class="section-head" id="news"><h2>Entertainment news</h2><span class="small">Casting, renewals, trailers and release announcements</span></div>
 <div id="newsList" class="feature-grid"></div>
-<div class="notice">ReelRadar is a prototype. TV series search and sample series data are connected to the public TVmaze API; TVmaze data is licensed under CC BY-SA and must be credited. TV schedule and recently aired episode cards use live TVmaze data; movie searches use Wikidata CC0 structured metadata (Commons images only where license permits · ratings unavailable); theater, movie release, news and streaming availability sections remain feature previews, not live listings. Full movie synopses, licensed posters, ratings, release news, showtimes and streaming availability still need appropriate data sources. Streaming availability varies by country. ReelRadar is an independent concept and is not affiliated with the services shown. Movie facts from <a href="https://www.wikidata.org" target="_blank" rel="noopener">Wikidata</a> (CC0). TV data provided by <a href="https://www.tvmaze.com" target="_blank" rel="noopener">TVmaze</a>.</div>
-<section class="notice" style="max-width:1200px;margin:0 auto;padding:15px 22px">Movie metadata: Wikidata (CC0). Some images: Wikimedia Commons, individually licensed and credited in title details. Images are not guaranteed to be official posters. Movie ratings are intentionally omitted until a suitable licensed ratings provider is connected. This is a development prototype.</section></main>
+<div class="notice">ReelRadar is a development prototype. Movie and TV search uses AMODB through a server-side endpoint, alongside Wikidata (CC0) film records and TVmaze series data. TVmaze data requires CC BY-SA attribution. Wikimedia Commons images are individually licensed and credited when available. AMODB metadata, ratings and TMDB-hosted poster rights have not been established for commercial use; verify permissions before monetizing. Theater showtimes, movie release calendars, entertainment news and streaming availability remain previews, not verified live listings. ReelRadar is independent and not affiliated with listed providers. Sources: <a href="https://www.wikidata.org" target="_blank" rel="noopener">Wikidata</a>, <a href="https://www.tvmaze.com" target="_blank" rel="noopener">TVmaze</a>.</div>
+<section class="notice" style="max-width:1200px;margin:0 auto;padding:15px 22px">Wikidata movie metadata is CC0. Wikimedia Commons files have separate licenses and attribution. AMODB search results may include ratings and images sourced from other providers; their appearance here does not establish commercial reuse rights.</section></main>
 <div id="modal" class="modal" role="dialog" aria-modal="true" aria-label="Title details"><div class="dialog"><button class="close" id="close" aria-label="Close">×</button><div class="rr-toolbar"><button type="button" id="rrExpand" class="rr-action" aria-pressed="false">⛶ Full screen</button><button type="button" id="rrSave" class="rr-action" aria-pressed="false">♡ Save to watchlist</button></div><div id="detail"></div></div></div>
 <script>
 const titles=[
@@ -134,26 +134,66 @@ const detail=await fetch(wikidataUrl({action:'wbgetentities',ids:ids.join('|'),l
 await enrichCommonsImages(movies,requestId);
 if(requestId===searchRequest)movieStatus.textContent=movies.length?`${movies.length} movie records found · Wikidata (CC0) · Commons images only where license permits · ratings unavailable`:'No verified movie entries in these results. Try a more specific title.';return movies;
 }catch(e){console.warn('Wikidata lookup failed',e);if(requestId===searchRequest)movieStatus.textContent='Wikidata could not be reached. Try again later.';return [];}}
+// AMODB search uses the Vercel server endpoint; the API secret never reaches this page.
+// Poster and ratings rights must be verified before commercial launch.
+const RR_GENRES={12:'Adventure',14:'Fantasy',16:'Animation',18:'Drama',27:'Horror',28:'Action',35:'Comedy',36:'History',37:'Western',53:'Thriller',80:'Crime',99:'Documentary',878:'Science Fiction',9648:'Mystery',10402:'Music',10749:'Romance',10751:'Family',10752:'War',10759:'Action & Adventure',10762:'Kids',10763:'News',10764:'Reality',10765:'Sci-Fi & Fantasy',10766:'Soap',10767:'Talk',10768:'War & Politics'};
+async function searchAMoDB(query,requestId){
+ try{
+  const response=await fetch('/api/movies?query='+encodeURIComponent(query));
+  if(!response.ok)throw new Error('AMODB HTTP '+response.status);
+  const data=await response.json();
+  if(requestId!==searchRequest)return [];
+  return (Array.isArray(data.results)?data.results:[])
+   .filter(x=>(x.media_type==='movie'||x.media_type==='tv')&&Number.isFinite(Number(x.id)))
+   .map(x=>{
+    const isMovie=x.media_type==='movie';
+    const release=x.release_date||x.first_air_date||'';
+    const votes=Number(x.vote_count);
+    const rating=Number(x.vote_average);
+    return {
+     id:(isMovie?300000000:400000000)+Number(x.id),amodbId:Number(x.id),
+     amodbType:x.media_type,title:x.title||x.name||'Untitled',
+     year:release.slice(0,4)||'TBA',type:isMovie?'Movie':'TV Series',
+     genre:(x.genre_ids||[]).map(id=>RR_GENRES[id]).filter(Boolean).slice(0,3).join(' · ')||(isMovie?'Movie':'TV Series'),
+     rating:votes>0&&Number.isFinite(rating)?rating.toFixed(1):'N/A',
+     source:'AMODB',poster:x.poster_path?'https://image.tmdb.org/t/p/w500'+x.poster_path:'',
+     synopsis:x.overview||'No synopsis is available yet.',
+     providers:['Check local streaming availability'],update:'Movie and TV discovery information'
+    };
+   });
+ }catch(error){console.warn('AMODB search unavailable; other sources remain available.',error);return [];}
+}
+function rrNormalizedTitle(v){return String(v||'').toLocaleLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g,' ').trim();}
 async function searchAll(query,requestId){
  const local=originalTitles.filter(t=>rrMatchesQuery(t,query));
- const [tv,movies]=await Promise.all([searchTVmaze(query,requestId),searchWikidataMovies(query,requestId)]);
+ // Preserve all three providers: AMODB first, TVmaze for series, Wikidata for film facts.
+ const [amodb,tv,wikidata]=await Promise.all([
+  searchAMoDB(query,requestId),searchTVmaze(query,requestId),searchWikidataMovies(query,requestId)
+ ]);
  if(requestId!==searchRequest)return;
  const seen=new Set();
- const merged=[...movies,...tv,...local].filter(t=>{const k=t.type+'|'+t.title.toLowerCase()+'|'+t.year;if(seen.has(k))return false;seen.add(k);return true;});
- // Rank exact titles ahead of partial matches, and prefer records with verified artwork.
- const norm=v=>String(v||'').toLocaleLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g,' ').trim();
- const target=norm(query);
- const score=t=>{const name=norm(t.title);let n=name===target?1000:name.startsWith(target)?500:name.includes(target)?250:0;
-   if(t.poster)n+=70;
-   if(t.type==='Movie')n+=15;
-   if(t.year!=='Unknown'&&t.year!=='TBA')n+=5;
-   return n;
+ const merged=[...amodb,...tv,...wikidata,...local].filter(t=>{
+  const kind=t.type==='Movie'?'movie':'series';
+  const key=kind+'|'+rrNormalizedTitle(t.title)+'|'+t.year;
+  if(seen.has(key))return false;
+  seen.add(key);return true;
+ });
+ const target=rrNormalizedTitle(query);
+ const score=t=>{
+  const name=rrNormalizedTitle(t.title);
+  let n=name===target?1000:name.startsWith(target)?500:name.includes(target)?250:0;
+  if(t.poster)n+=70;
+  if(t.source==='AMODB')n+=35;
+  if(t.type==='Movie')n+=15;
+  if(t.year!=='Unknown'&&t.year!=='TBA')n+=5;
+  return n;
  };
  merged.sort((a,b)=>score(b)-score(a));
  titles.splice(0,titles.length,...merged);
  rrSearchLoading(false);
  render();
 }
+
 function rrMatchesQuery(t,q){return (`${t.title} ${t.genre} ${t.type} ${t.year}`).toLowerCase().includes(q.toLowerCase().trim());}
 function rrSearchLoading(loading){
  const panel=document.getElementById('rrSearchResults'),message=document.getElementById('rrSearchMessage');
@@ -227,10 +267,10 @@ async function loadShowExtras(show){
 const RR_WATCH_KEY='reelradar.watchlist.v1';
 let rrWatchlist=[];
 try{const stored=JSON.parse(localStorage.getItem(RR_WATCH_KEY)||'[]');if(Array.isArray(stored))rrWatchlist=stored.filter(x=>x&&typeof x.key==='string'&&typeof x.title==='string').slice(0,250);}catch(e){console.warn('Watchlist storage unavailable',e);}
-function rrTitleKey(t){return t.wikidataId?'wikidata:'+t.wikidataId:t.tvmazeId?'tvmaze:'+t.tvmazeId:'sample:'+t.type+':'+t.title+':'+t.year;}
+function rrTitleKey(t){return t.amodbId?'amodb:'+t.amodbType+':'+t.amodbId:t.wikidataId?'wikidata:'+t.wikidataId:t.tvmazeId?'tvmaze:'+t.tvmazeId:'sample:'+t.type+':'+t.title+':'+t.year;}
 function rrIsSaved(t){return rrWatchlist.some(x=>x.key===rrTitleKey(t));}
 function rrPersist(){if(window.rrCloudUser){window.rrSyncWatchlist?.();return;}try{localStorage.setItem(RR_WATCH_KEY,JSON.stringify(rrWatchlist));}catch(e){console.warn('Could not save guest watchlist',e);}}
-function rrToggleSaved(t){const key=rrTitleKey(t),i=rrWatchlist.findIndex(x=>x.key===key);if(i>=0)rrWatchlist.splice(i,1);else rrWatchlist.unshift({key,title:t.title,year:t.year,type:t.type,genre:t.genre||'',poster:t.poster||'',rating:t.rating||'N/A',source:t.source||'',synopsis:t.synopsis||'',providers:t.providers||[],tvmazeId:t.tvmazeId||null,wikidataId:t.wikidataId||null,externalUrl:t.externalUrl||'',imageCredit:t.imageCredit||null,update:t.update||''});rrPersist();rrRenderWatchlist();if(typeof render==='function')render();rrUpdateSaveButton(t);}
+function rrToggleSaved(t){const key=rrTitleKey(t),i=rrWatchlist.findIndex(x=>x.key===key);if(i>=0)rrWatchlist.splice(i,1);else rrWatchlist.unshift({key,title:t.title,year:t.year,type:t.type,genre:t.genre||'',poster:t.poster||'',rating:t.rating||'N/A',source:t.source||'',synopsis:t.synopsis||'',providers:t.providers||[],tvmazeId:t.tvmazeId||null,wikidataId:t.wikidataId||null,amodbId:t.amodbId||null,amodbType:t.amodbType||null,externalUrl:t.externalUrl||'',imageCredit:t.imageCredit||null,update:t.update||''});rrPersist();rrRenderWatchlist();if(typeof render==='function')render();rrUpdateSaveButton(t);}
 function rrUpdateSaveButton(t){const b=document.getElementById('rrSave');if(!b)return;const saved=rrIsSaved(t);b.setAttribute('aria-pressed',String(saved));b.textContent=saved?'♥ Remove from watchlist':'♡ Save to watchlist';b.onclick=()=>rrToggleSaved(t);}
 function rrCardHtml(t){const key=rrTitleKey(t),saved=rrIsSaved(t);return `<article class="card" data-watch-key="${rrEscape(key)}"><div class="poster">${t.poster?`<img loading="lazy" src="${rrEscape(t.poster)}" alt="${rrEscape(t.title)} image" onerror="this.outerHTML='<div class=&quot;poster-placeholder&quot;>🎬</div>'">`:'<div class="poster-placeholder">🎬</div>'}<button class="rr-save-card" type="button" aria-label="${saved?'Remove from':'Add to'} watchlist: ${rrEscape(t.title)}" aria-pressed="${saved}" data-save-key="${rrEscape(key)}">${saved?'♥':'♡'}</button>${t.rating&&t.rating!=='N/A'?`<span class="rating">★ ${rrEscape(t.rating)}</span>`:''}</div><h3>${rrEscape(t.title)}</h3><div class="meta">${rrEscape(t.year)} · ${rrEscape(t.type)}</div></article>`;}
 function rrWireCards(root,items){root.querySelectorAll('[data-watch-key]').forEach(card=>{const t=items.find(x=>rrTitleKey(x)===card.dataset.watchKey);if(!t)return;card.addEventListener('click',e=>{if(e.target.closest('[data-save-key]'))return;rrOpenSavedOrLive(t);});card.querySelector('[data-save-key]')?.addEventListener('click',e=>{e.stopPropagation();rrToggleSaved(t);});});}
@@ -239,9 +279,9 @@ function rrRenderWatchlist(){const grid=document.getElementById('watchlistGrid')
 function openDetail(id){const t=titles.find(x=>x.id===id);if(!t)return;const safeTitle=rrEscape(t.title);const trailerQuery=encodeURIComponent(t.title+' '+t.year+' official trailer');const trailerUrl='https://www.youtube.com/results?search_query='+trailerQuery;document.getElementById('detail').innerHTML=`<div class="detail">${t.poster?`<img src="${rrEscape(t.poster)}" alt="${safeTitle} image" onerror="this.outerHTML='<div class=&quot;poster-placeholder&quot;>🎬</div>'">`:`<div class="poster-placeholder">🎬<small>No licensed poster</small></div>`}<div><div class="eyebrow">${rrEscape(t.type)} · ${rrEscape(t.year)}</div><h2>${safeTitle}</h2><div class="meta">${t.rating!=='N/A'?`★ ${rrEscape(t.rating)} · `:''}${rrEscape(t.source)} · ${rrEscape(t.genre)}</div><p>${rrEscape(t.synopsis)}</p><p><a class="btn" href="${trailerUrl}" target="_blank" rel="noopener noreferrer">Search official trailers ↗</a></p><p class="small">Trailer search opens YouTube; ReelRadar does not claim the videos are official or licensed for embedding.</p>${t.wikidataId?`<h3>Film credits</h3><div id="movieCredits" data-movie="${rrEscape(t.wikidataId)}" class="small">Loading director, cast and film details…</div>`:''}<h3>Where to watch</h3><div>${(t.providers||[]).map(p=>`<span class="provider">${rrEscape(p)}</span>`).join('')}</div><p class="small">Streaming availability has not been verified for your region.</p>${t.update?`<h3>Latest update</h3><p>${rrEscape(t.update)}</p>`:''}${t.imageCredit?`<p class="small">Image: ${rrEscape(t.imageCredit.author)} · ${rrEscape(t.imageCredit.license)} · <a href="${rrSafeLink(t.imageCredit.page)}" target="_blank" rel="noopener" style="color:#ff8aa0">License and attribution ↗</a></p>`:''}${t.externalUrl?`<p><a href="${rrSafeLink(t.externalUrl)}" target="_blank" rel="noopener" style="color:#ff8aa0">View source on Wikidata ↗</a></p>`:''}</div></div>${t.tvmazeId?`<div id="showExtras" data-show="${t.tvmazeId}" class="rr-extra">Loading cast, seasons and episodes…</div>`:''}`;document.getElementById('modal').classList.add('open');rrUpdateSaveButton(t);if(t.wikidataId)loadMovieCredits(t);if(t.tvmazeId)loadShowExtras(t);}
 document.getElementById('rrExpand').addEventListener('click',()=>{const modal=document.getElementById('modal');const expanded=modal.classList.toggle('rr-fullscreen');const b=document.getElementById('rrExpand');b.setAttribute('aria-pressed',String(expanded));b.textContent=expanded?'⤡ Exit full screen':'⛶ Full screen';});
 rrRenderWatchlist();
-document.querySelectorAll('.chip').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.chip').forEach(x=>x.classList.remove('active'));b.classList.add('active');filter=b.dataset.filter;render()}));search.addEventListener('input',()=>{
+document.querySelectorAll('.chip[data-filter]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.chip[data-filter]').forEach(x=>x.classList.remove('active'));b.classList.add('active');filter=b.dataset.filter;render()}));search.addEventListener('input',()=>{
  clearTimeout(searchTimer);const query=search.value.trim();++searchRequest;
- if(query.length<2){movieStatus.textContent='Search movies using Wikidata. Eligible Commons images are shown with attribution; movie ratings are not yet licensed.';titles.splice(0,titles.length,...originalTitles);mergeTVmaze(tvmazeTitles);render();return;}
+ if(query.length<2){movieStatus.textContent='Search movies and series using AMODB, TVmaze and Wikidata. Poster and rating rights require verification before commercial use.';titles.splice(0,titles.length,...originalTitles);mergeTVmaze(tvmazeTitles);render();return;}
  filter='All';document.querySelectorAll('.chip[data-filter]').forEach(b=>b.classList.toggle('active',b.dataset.filter==='All'));
  const local=originalTitles.filter(t=>rrMatchesQuery(t,query));
  titles.splice(0,titles.length,...local);render();rrSearchLoading(true);
