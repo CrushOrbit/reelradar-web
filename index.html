@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ReelRadar — Find your next watch</title>
+<style>
+:root{--bg:#0b0b10;--panel:#15151e;--muted:#a5a5b4;--text:#f7f7fb;--accent:#ff365d;--line:#292936}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}header{position:sticky;top:0;z-index:5;background:rgba(11,11,16,.93);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}.nav{max-width:1200px;margin:auto;padding:16px 22px;display:flex;align-items:center;gap:24px}.logo{font-size:22px;font-weight:900;letter-spacing:-.7px;white-space:nowrap}.logo span{color:var(--accent)}nav{display:flex;gap:18px}nav a{color:#d9d9e2;text-decoration:none;font-size:14px}nav a:hover{color:white}.search{margin-left:auto;max-width:300px;width:100%;background:#1a1a24;border:1px solid #333342;color:white;padding:11px 14px;border-radius:10px;outline:none}.search:focus{border-color:var(--accent)}main{max-width:1200px;margin:auto;padding:26px 22px 60px}.hero{min-height:310px;border-radius:20px;overflow:hidden;position:relative;display:flex;align-items:end;padding:34px;background:linear-gradient(90deg,rgba(10,10,16,.98),rgba(10,10,16,.74) 48%,rgba(10,10,16,.1)),linear-gradient(0deg,rgba(10,10,16,.8),transparent),url('https://image.tmdb.org/t/p/w1280/8b8R8l88Qje9dn9OE8PY05Nxl1X.jpg') center 35%/cover,#242433}.hero-content{max-width:560px}.eyebrow{color:#ff8aa0;font-size:12px;text-transform:uppercase;letter-spacing:2px;font-weight:800}.hero h1{font-size:clamp(30px,5vw,52px);line-height:1.02;margin:10px 0}.hero p{color:#dedee7;line-height:1.55;max-width:500px}.btn{display:inline-block;background:var(--accent);color:white;text-decoration:none;border:0;border-radius:9px;padding:11px 16px;font-weight:800;cursor:pointer}.btn.secondary{background:#ffffff18;border:1px solid #ffffff3a;margin-left:8px}.section-head{display:flex;align-items:center;justify-content:space-between;margin:32px 0 15px;gap:14px}.section-head h2{font-size:22px;margin:0}.filters{display:flex;gap:8px;flex-wrap:wrap}.chip{border:1px solid #343442;color:#d4d4df;background:transparent;border-radius:999px;padding:7px 12px;cursor:pointer;font-size:12px}.chip.active,.chip:hover{background:#29202a;border-color:var(--accent);color:white}.grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:18px}.card{min-width:0;cursor:pointer}.poster{position:relative;aspect-ratio:2/3;background:#222230;border-radius:12px;overflow:hidden;border:1px solid #2a2a36}.poster img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .25s}.card:hover .poster img{transform:scale(1.04)}.rating{position:absolute;left:8px;top:8px;background:#101017e8;border:1px solid #ffffff25;border-radius:7px;padding:5px 7px;font-size:12px;font-weight:800}.card h3{font-size:14px;margin:10px 0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.meta{color:var(--muted);font-size:12px}.tag{display:inline-block;color:#ffb7c4;background:#ff365d1c;padding:4px 7px;border-radius:5px;font-size:10px;margin-top:7px}.empty{color:var(--muted);padding:28px 0}.feature-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.feature-card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:17px;min-height:120px}.feature-card h3{margin:0 0 8px;font-size:16px}.feature-card p{margin:0;color:var(--muted);font-size:13px;line-height:1.55}.feature-label{display:inline-block;color:#ffb7c4;background:#ff365d1c;padding:4px 7px;border-radius:5px;font-size:10px;margin-bottom:9px}.notice{border-top:1px solid var(--line);margin-top:40px;padding-top:20px;color:#858594;font-size:12px;line-height:1.6}.modal{display:none;position:fixed;inset:0;z-index:20;background:#000b;align-items:center;justify-content:center;padding:18px}.modal.open{display:flex}.dialog{max-width:780px;width:100%;max-height:90vh;overflow:auto;background:#171720;border:1px solid #343442;border-radius:18px;padding:22px;position:relative}.close{float:right;background:none;border:0;color:white;font-size:25px;cursor:pointer}.detail{display:grid;grid-template-columns:190px 1fr;gap:22px;margin-top:12px}.detail img{width:100%;border-radius:10px}.detail h2{margin:0 0 8px;font-size:28px}.detail p{color:#d0d0da;line-height:1.6}.provider{display:inline-block;background:#262633;border:1px solid #3a3a49;border-radius:7px;padding:8px 10px;margin:4px 5px 0 0;color:#eee;font-size:12px}.small{font-size:11px;color:var(--muted)}@media(max-width:850px){.grid{grid-template-columns:repeat(3,minmax(0,1fr))}nav{display:none}.hero{min-height:280px;padding:24px}.search{max-width:220px}}@media(max-width:520px){.nav{gap:12px;padding:13px}.logo{font-size:19px}.search{min-width:0;padding:10px;font-size:12px}main{padding:18px 14px 45px}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.hero{min-height:330px;padding:20px}.hero p{font-size:14px}.section-head{align-items:flex-start;flex-direction:column}.detail{grid-template-columns:110px 1fr;gap:14px}.detail h2{font-size:21px}.dialog{padding:16px}}
+.poster-placeholder{height:100%;min-height:180px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:12px;font-size:42px;color:#8f8fa7;background:linear-gradient(135deg,#242434,#13131c);text-align:center}.poster-placeholder small{font-size:11px;color:#b4b4c5}.detail .poster-placeholder{min-height:220px;border-radius:10px}
+/* ReelRadar discovery homepage */
+.rr-home-section{scroll-margin-top:85px}.rr-home-section .grid{min-height:80px}.rr-home-controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:12px 0 20px}.rr-home-controls select,.rr-home-controls button{background:#1a1a24;border:1px solid #454554;border-radius:9px;padding:10px;color:#fff}.rr-home-note{color:var(--muted);font-size:12px;line-height:1.6}.rr-home-tabs{display:flex;gap:9px;overflow-x:auto;padding:12px 0}.rr-home-tabs a{color:#f7f7fb;text-decoration:none;background:#20202b;padding:10px 14px;border:1px solid #383846;border-radius:999px;white-space:nowrap;font-size:13px}.rr-home-tabs a:hover{border-color:var(--accent)}.rr-family-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}.rr-family-block{background:#15151e;border:1px solid #333342;border-radius:14px;padding:14px}.rr-family-block h3{margin:0 0 10px}.rr-family-block .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.rr-family-block .card h3{font-size:12px}.rr-family-block .meta{font-size:11px}.rr-family-block .poster{border-radius:8px}.rr-hide{display:none!important}
+
+/* Account interface — visual prototype; no client-side password storage */
+.rr-account-trigger{border:1px solid #ff365d;background:#ff365d18;color:#fff;border-radius:9px;padding:10px 13px;font-weight:750;cursor:pointer;white-space:nowrap}
+.rr-auth-backdrop{position:fixed;inset:0;z-index:100;background:#05050bdc;display:none;align-items:center;justify-content:center;padding:18px;backdrop-filter:blur(8px)}
+.rr-auth-backdrop.open{display:flex}.rr-auth-panel{width:min(100%,440px);background:#191922;border:1px solid #414152;border-radius:22px;padding:30px;box-shadow:0 20px 70px #0008;position:relative}
+.rr-auth-close{position:absolute;right:17px;top:13px;background:transparent;color:#fff;border:0;font-size:26px;cursor:pointer}.rr-auth-panel h2{font-size:28px;margin:12px 0 8px}.rr-auth-panel p{color:#b7b7c6;line-height:1.5;font-size:13px}.rr-auth-tabs{display:flex;background:#0d0d15;border-radius:10px;padding:4px;gap:4px}.rr-auth-tab{flex:1;padding:11px;border:0;border-radius:8px;background:transparent;color:#ccc;cursor:pointer;font-weight:700}.rr-auth-tab.active{background:#ff365d;color:#fff}.rr-auth-form{display:grid;gap:13px;margin-top:20px}.rr-auth-form label{display:grid;gap:7px;font-size:13px;font-weight:700}.rr-auth-form input{width:100%;background:#0e0e17;border:1px solid #454555;border-radius:9px;padding:13px;color:#fff;font:inherit}.rr-auth-form input:focus{outline:2px solid #ff365d;outline-offset:1px}.rr-auth-submit{width:100%;margin-top:6px}.rr-auth-note{border:1px solid #474052;border-radius:9px;padding:10px;margin-top:14px}.rr-auth-status{min-height:22px;color:#ffb4c4;font-size:13px;margin-top:10px}
+@media(max-width:520px){.rr-account-trigger{padding:9px;font-size:12px}.rr-auth-panel{padding:22px}}
+
+</style>
+<style>
+.rr-extra{margin-top:25px;border-top:1px solid #353543;padding-top:16px}.rr-extra h3{margin:20px 0 12px}.rr-people{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}.rr-person{display:flex;gap:8px;align-items:center;background:#22222d;border-radius:9px;padding:8px;font-size:12px}.rr-person img{width:45px;height:60px;object-fit:cover;border-radius:6px}.rr-person small{display:block;color:#a5a5b4;margin-top:4px}.rr-select{background:#242432;color:white;border:1px solid #555;border-radius:8px;padding:10px;margin:8px 0;width:100%;max-width:260px}.rr-episode{padding:12px 0;border-bottom:1px solid #333342}.rr-episode span{display:block;margin-top:4px}.rr-episode p{margin:5px 0;font-size:13px}.rr-related{display:flex;flex-wrap:wrap;gap:8px}.rr-related-btn{background:#292936;color:white;border:1px solid #555;border-radius:8px;padding:9px;cursor:pointer}
+
+/* ReelRadar saved titles and expanded detail view */
+.rr-toolbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:14px 0}.rr-action{background:#262633;color:#fff;border:1px solid #555568;border-radius:9px;padding:10px 14px;cursor:pointer;font-weight:700}.rr-action:hover,.rr-action[aria-pressed="true"]{border-color:var(--accent);background:#3b2230}.rr-save-card{position:absolute;right:8px;top:8px;z-index:2;background:#15151eea;border:1px solid #777;border-radius:50%;width:34px;height:34px;color:white;cursor:pointer;font-size:19px}.rr-save-card[aria-pressed="true"]{color:#ff5478}.rr-saved-count{font-size:12px;color:#ffb7c4}.rr-fullscreen .dialog{max-width:none;width:100%;height:100%;max-height:none;border-radius:0;padding:clamp(18px,4vw,55px);overflow:auto}.rr-fullscreen{padding:0}.rr-fullscreen .detail{grid-template-columns:minmax(130px,250px) 1fr}.rr-saved-empty{color:var(--muted);padding:16px 0}.rr-saved-grid{margin-top:14px}@media(max-width:520px){.rr-fullscreen .detail{grid-template-columns:100px 1fr}.rr-action{font-size:12px;padding:9px}}
+</style>
+<style>
+
+/* ReelRadar cinematic and mobile navigation refresh */
+:root{--bg:#080910;--panel:#141620;--line:#30303f;--accent:#fa365f;--muted:#b4b6c6}
+html{scroll-behavior:smooth;scroll-padding-top:100px}body{background:radial-gradient(ellipse 80% 25% at 65% 0%,#241329 0%,transparent 80%),var(--bg)}
+header{box-shadow:0 10px 35px #0005}.nav{max-width:1380px;gap:18px}.rr-brand{color:inherit;text-decoration:none}.logo{letter-spacing:-1px;font-size:24px}
+.nav nav{gap:15px;overflow-x:auto;scrollbar-width:none}.nav nav a{white-space:nowrap;font-weight:600}.nav nav a:hover{color:#ff7b98}
+main{max-width:1380px}.rr-quick-nav{display:flex;gap:10px;overflow-x:auto;scrollbar-width:none;padding:0 0 20px}.rr-quick-nav a{flex-shrink:0;color:#e9e8f2;text-decoration:none;font-weight:700;font-size:13px;background:#1a1b27;border:1px solid #373748;border-radius:999px;padding:11px 16px;transition:.2s}.rr-quick-nav a:hover{border-color:var(--accent);background:#30202d}
+.hero{min-height:390px;border:1px solid #ffffff20;box-shadow:0 24px 70px #0008;background-position:center,center,center 35%;}.hero::after{content:'REELRADAR ORIGINAL DISCOVERY';position:absolute;right:20px;bottom:17px;font-size:10px;letter-spacing:2px;color:#ffffff75;pointer-events:none}.hero-content{position:relative;z-index:1}.hero h1{font-weight:900;letter-spacing:-2px;line-height:1.04}.hero p{font-size:16px}.btn{box-shadow:0 7px 22px #ff365d33}.btn:hover{filter:brightness(1.12)}
+.section-head{margin-top:40px}.section-head h2{font-size:clamp(21px,2.5vw,27px);letter-spacing:-.6px}.grid{gap:20px}.poster{border-radius:15px;background:linear-gradient(135deg,#29283b,#151521);box-shadow:0 10px 26px #0006}.card{transition:transform .2s}.card:hover{transform:translateY(-4px)}.card h3{font-size:15px}.feature-card{background:linear-gradient(145deg,#1a1b28,#12131c);transition:transform .2s,border-color .2s}.feature-card:hover{transform:translateY(-3px);border-color:#a23a57}.rr-family-grid>*{min-width:0}
+.rr-menu-toggle{display:none;background:#222332;color:#fff;border:1px solid #454557;border-radius:10px;font-size:21px;width:42px;height:42px;cursor:pointer;align-items:center;justify-content:center}
+@media(max-width:1050px){.nav nav{display:none}.rr-menu-toggle{display:flex;order:3}.nav{flex-wrap:wrap}.nav nav.rr-nav-open{display:flex;order:4;width:100%;flex-basis:100%;flex-wrap:wrap;overflow:visible;padding:12px 0;border-top:1px solid var(--line)}.search{margin-left:auto}.hero{min-height:350px}}
+@media(max-width:520px){.nav{gap:10px}.rr-menu-toggle{width:38px;height:38px;order:3}.search{max-width:none;flex:1;width:100%;font-size:13px}.logo{font-size:21px}.rr-quick-nav{margin:0 -14px;padding:0 14px 16px}.rr-quick-nav a{font-size:12px;padding:10px 13px}.hero{min-height:360px;border-radius:16px;padding:22px;background-position:center,center,60% center}.hero h1{letter-spacing:-1px}.hero::after{display:none}.hero .btn{padding:10px 12px;font-size:12px}.section-head{margin-top:30px}.grid{gap:13px}.card h3{font-size:13px}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.card,.feature-card,.poster img{transition:none}}
+
+ .rr-search-results{margin:0 0 22px;padding:16px;border:1px solid #454052;border-radius:16px;background:#16131f}.rr-search-results .section-head{margin:0 0 12px}.rr-search-results .grid{margin-top:14px}.rr-search-results .rr-home-note{margin:6px 0;color:#d6cbd2} 
+</style>
+</head>
+<body>
+<header><div class="nav"><a class="rr-brand" href="#top" aria-label="ReelRadar home"><div class="logo">Reel<span>Radar</span></div></a><button id="rrMenuToggle" class="rr-menu-toggle" aria-label="Open navigation" aria-expanded="false" aria-controls="rrMainNav">☰</button><nav id="rrMainNav"><a href="#trending">Discover</a><a href="#movies">Movies</a><a href="#series">TV Shows</a><a href="#theaters">In Theaters</a><a href="#upcoming-movies">Upcoming Movies</a><a href="#upcoming-series">Upcoming Series</a><a href="#news">News</a><a href="#kids">Kids & Family</a><a href="#watchlist">My Watchlist</a></nav><button type="button" class="rr-account-trigger" id="rrAccountOpen">Sign in / Join</button><input id="search" class="search" placeholder="Search movies & shows…" aria-label="Search movies and shows" /></div></header>
+<main id="top">
+<div class="rr-quick-nav" aria-label="Explore categories"><a href="#rr-movie-picks">🎬 Movies</a><a href="#rr-tv-picks">📺 TV Shows</a><a href="#rr-kdrama-picks">💗 K-Dramas</a><a href="#trending">🔥 Trending</a><a href="#kids">🌈 Kids & Family</a><a href="#watchlist">♡ Watchlist</a></div>
+<section id="rrSearchResults" class="rr-search-results rr-hide" aria-live="polite"><div class="section-head"><h2>Search results</h2><button type="button" id="rrClearSearch" class="chip">Clear search ×</button></div><p id="rrSearchMessage" class="rr-home-note"></p><div id="rrSearchGrid" class="grid"></div></section>
+<section class="hero"><div class="hero-content"><div class="eyebrow">Your next favorite starts here</div><h1>Less scrolling.<br>More watching.</h1><p>Discover movies and series, check ratings, get the quick story, and find where to watch — all in one place.</p><a class="btn" href="#trending">Explore titles</a><a class="btn secondary" href="#updates">Latest updates</a></div></section>
+<div class="rr-home-tabs" aria-label="Explore ReelRadar sections"><a href="#trending">Trending</a><a href="#rr-movie-picks">Movies</a><a href="#rr-tv-picks">TV Shows</a><a href="#rr-kdrama-picks">K-Dramas</a><a href="#upcoming-movies">Upcoming</a><a href="#kids">Kids & Family</a><a href="#watchlist">My Watchlist</a></div>
+<section class="rr-home-section" id="rr-movie-picks"><div class="section-head"><h2>Movies to discover</h2><span class="small">Sample movie picks · live movie search above</span></div><div id="rrMoviePicks" class="grid"></div></section>
+<section class="rr-home-section" id="rr-tv-picks"><div class="section-head"><h2>TV shows</h2><span class="small">Live TVmaze series</span></div><div id="rrTvPicks" class="grid"><p class="empty">Loading series…</p></div></section>
+<section class="rr-home-section" id="rr-kdrama-picks"><div class="section-head"><h2>K-Dramas</h2><span class="small">Curated titles · matched to TVmaze</span></div><div id="rrKdramaPicks" class="grid"><p class="empty">Loading Korean series…</p></div></section>
+<div class="section-head" id="trending"><h2>Trending now</h2><div class="filters"><button class="chip active" data-filter="All">All</button><button class="chip" data-filter="Movie">Movies</button><button class="chip" data-filter="TV Series">TV series</button><button class="chip" data-filter="K-Drama">K-dramas</button></div></div>
+<div id="grid" class="grid"></div>
+<section id="kids" class="rr-home-section" aria-labelledby="kidsHeading"><div class="section-head"><h2 id="kidsHeading">Kids & Family</h2><span class="small">Curated discovery, not verified age classifications</span></div><div class="rr-home-controls"><label for="rrAge">Browse preference</label><select id="rrAge"><option value="all">All family categories</option><option value="preschool">Preschool</option><option value="animation">Animation</option><option value="educational">Educational shows</option><option value="family">Family movies</option><option value="teen">Teen shows</option></select><label><input type="checkbox" id="rrHideTeen"> Hide teen suggestions on this browser</label></div><p class="rr-home-note">These are editorial groupings, not official age ratings. Please review individual titles before children watch. The hide option is a local viewing preference, not a secure parental control or age verification system. No videos autoplay.</p><div class="rr-family-grid" id="rrFamilyGroups"><p class="empty">Loading family discovery…</p></div><p class="rr-home-note">TV series data: <a href="https://www.tvmaze.com" target="_blank" rel="noopener noreferrer">TVmaze</a>. Family movie examples are local demo records; posters and age classifications are not verified.</p></section>
+<section id="watchlist"><div class="section-head"><h2>My Watchlist <span class="rr-saved-count" id="watchlistCount"></span></h2><span class="small">Sign in to sync across devices · local saves available as guest</span></div><div id="watchlistGrid" class="grid rr-saved-grid"></div><p id="watchlistEmpty" class="rr-saved-empty">Save a movie or show using the bookmark button to see it here.</p></section>
+<div class="section-head" id="movies"><h2>Movie search · Wikidata</h2><span class="small">Search above for live movie metadata · CC0</span></div>
+<div id="movieStatus" class="small">Search movies using Wikidata. Eligible Commons images are shown with attribution; movie ratings are not yet licensed. Example: Inception.</div>
+<div class="section-head" id="theaters"><h2>Now in theaters</h2><span class="small">Find films playing on the big screen</span></div>
+<div id="theatersList" class="feature-grid"></div>
+<div class="section-head" id="upcoming-movies"><h2>Upcoming movies</h2><span class="small">Theatrical and streaming releases</span></div>
+<div id="upcomingMoviesList" class="feature-grid"></div>
+<div class="section-head" id="upcoming-series"><h2>TV schedule</h2><span class="small">Episodes airing today · TVmaze live data</span></div>
+<div id="upcomingSeriesList" class="feature-grid"><p class="empty">Loading today’s TV schedule…</p></div>
+<div class="section-head" id="updates"><h2>Recently aired episodes</h2><span class="small">Recent TV schedule data from TVmaze</span></div>
+<div id="updatesList" class="feature-grid"><p class="empty">Loading recent episodes…</p></div>
+<div class="section-head" id="news"><h2>Entertainment news</h2><span class="small">Casting, renewals, trailers and release announcements</span></div>
+<div id="newsList" class="feature-grid"></div>
+<div class="notice">ReelRadar is a prototype. TV series search and sample series data are connected to the public TVmaze API; TVmaze data is licensed under CC BY-SA and must be credited. TV schedule and recently aired episode cards use live TVmaze data; movie searches use Wikidata CC0 structured metadata (Commons images only where license permits · ratings unavailable); theater, movie release, news and streaming availability sections remain feature previews, not live listings. Full movie synopses, licensed posters, ratings, release news, showtimes and streaming availability still need appropriate data sources. Streaming availability varies by country. ReelRadar is an independent concept and is not affiliated with the services shown. Movie facts from <a href="https://www.wikidata.org" target="_blank" rel="noopener">Wikidata</a> (CC0). TV data provided by <a href="https://www.tvmaze.com" target="_blank" rel="noopener">TVmaze</a>.</div>
+<section class="notice" style="max-width:1200px;margin:0 auto;padding:15px 22px">Movie metadata: Wikidata (CC0). Some images: Wikimedia Commons, individually licensed and credited in title details. Images are not guaranteed to be official posters. Movie ratings are intentionally omitted until a suitable licensed ratings provider is connected. This is a development prototype.</section></main>
+<div id="modal" class="modal" role="dialog" aria-modal="true" aria-label="Title details"><div class="dialog"><button class="close" id="close" aria-label="Close">×</button><div class="rr-toolbar"><button type="button" id="rrExpand" class="rr-action" aria-pressed="false">⛶ Full screen</button><button type="button" id="rrSave" class="rr-action" aria-pressed="false">♡ Save to watchlist</button></div><div id="detail"></div></div></div>
+<script>
+const titles=[
+{id:1,title:'Dune: Part Two',year:2024,type:'Movie',genre:'Sci-Fi · Adventure',rating:'8.5',source:'TMDB sample',poster:'https://image.tmdb.org/t/p/w500/1pdfLvkbY9ohJlCjQH2CZjjYVvJ.jpg',synopsis:'Paul Atreides unites with Chani and the Fremen while seeking revenge against the conspirators who destroyed his family.',providers:['Check local streaming availability'],update:'Now available to discover'},
+{id:2,title:'Queen of Tears',year:2024,type:'K-Drama',genre:'Romance · Drama',rating:'8.2',source:'TMDB sample',poster:'https://image.tmdb.org/t/p/w500/tw2zT9x2P2P0Y8jQzKQ7n8o1Y3F.jpg',synopsis:'A married couple facing a crisis find their love tested in unexpected ways.',providers:['Netflix — verify by country'],update:'Popular Korean series'},
+{id:3,title:'Inside Out 2',year:2024,type:'Movie',genre:'Animation · Family',rating:'7.6',source:'TMDB sample',poster:'https://image.tmdb.org/t/p/w500/vpnVM9B6NMmQpWeZvzLvDESb2QY.jpg',synopsis:'Riley enters her teenage years as new emotions arrive at headquarters and change the team dynamic.',providers:['Disney+ — verify by country'],update:'Family pick'},
+{id:4,title:'The Last of Us',year:2023,type:'TV Series',genre:'Drama · Thriller',rating:'8.6',source:'TMDB sample',poster:'https://image.tmdb.org/t/p/w500/uKvVjHNqB5VmOrdxqAt2F7J78ED.jpg',synopsis:'A hardened survivor escorts a teenager across a dangerous post-apocalyptic America.',providers:['Max — verify by country'],update:'Series to catch up on'},
+{id:5,title:'Past Lives',year:2023,type:'Movie',genre:'Romance · Drama',rating:'7.9',source:'TMDB sample',poster:'https://image.tmdb.org/t/p/w500/k3waqVXSnvCZWfJYNtdamTgTtTA.jpg',synopsis:'Two childhood friends reconnect years later and reflect on love, distance, and the lives they might have lived.',providers:['Check local streaming availability'],update:'Critically acclaimed'},
+{id:6,title:'Moving',year:2023,type:'K-Drama',genre:'Action · Fantasy',rating:'8.5',source:'TMDB sample',poster:'https://image.tmdb.org/t/p/w500/5gQ2k8x4o9Y3s5c1f7r0n1b2a3.jpg',synopsis:'Teenagers with hidden superpowers and their parents face dangerous secrets from the past.',providers:['Disney+ — verify by country'],update:'K-drama recommendation'},
+{id:7,title:'The Bear',year:2022,type:'TV Series',genre:'Comedy · Drama',rating:'8.2',source:'TMDB sample',poster:'https://image.tmdb.org/t/p/w500/sHFlbKS3WLqMnp9t2ghADIJFnuQ.jpg',synopsis:'A talented chef returns to Chicago to run his family sandwich shop while navigating grief and a chaotic kitchen.',providers:['Check local streaming availability'],update:'Award-winning series'},
+{id:8,title:'Spider-Man: Across the Spider-Verse',year:2023,type:'Movie',genre:'Animation · Action',rating:'8.6',source:'TMDB sample',poster:'https://image.tmdb.org/t/p/w500/8Vt6mWEReuy4Of61Lnj5Xj704m8.jpg',synopsis:'Miles Morales travels across the multiverse and encounters a team of Spider-People protecting its existence.',providers:['Check local streaming availability'],update:'Fan favorite'},
+{id:9,title:'Business Proposal',year:2022,type:'K-Drama',genre:'Romance · Comedy',rating:'8.1',source:'TMDB sample',poster:'https://image.tmdb.org/t/p/w500/eDo0pNruy0Qgj6BdTyHIR4cxHY8.jpg',synopsis:'A blind date arranged to scare away a suitor becomes complicated when the date turns out to be her company CEO.',providers:['Netflix — verify by country'],update:'Rom-com pick'},
+{id:10,title:'Oppenheimer',year:2023,type:'Movie',genre:'Biography · Drama',rating:'8.3',source:'TMDB sample',poster:'https://image.tmdb.org/t/p/w500/ptpr0kGAckfQkJeJIt8st5dglvd.jpg',synopsis:'The story of J. Robert Oppenheimer and the scientific and moral stakes of developing the atomic bomb.',providers:['Check local streaming availability'],update:'Historical drama'}
+];
+const originalTitles=[...titles];let filter='All';const grid=document.getElementById('grid');const search=document.getElementById('search');
+// TVmaze public API integration: no API key required.
+const TVMAZE='https://api.tvmaze.com';
+let tvmazeTitles=[]; let searchTimer=null; let searchRequest=0;
+function fromTVmaze(show){return {id:1000000+show.id,tvmazeId:show.id,title:show.name,year:(show.premiered||'').slice(0,4)||'TBA',type:'TV Series',genre:(show.genres||[]).slice(0,2).join(' · ')||'TV Series',rating:show.rating&&show.rating.average!=null?Number(show.rating.average).toFixed(1):'N/A',source:'TVmaze',poster:show.image?(show.image.medium||show.image.original):'',synopsis:(show.summary||'No synopsis is available yet.').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim(),providers:['Check your local streaming services'],update:show.status?('Status: '+show.status):'TV series information from TVmaze'};}
+function mergeTVmaze(items){for(const item of items){const t=item.show?fromTVmaze(item.show):fromTVmaze(item);const idx=titles.findIndex(x=>x.title.toLowerCase()===t.title.toLowerCase()&&x.type!=='Movie');if(idx>=0){titles[idx]={...titles[idx],...t};}else if(!titles.some(x=>x.id===t.id)){titles.push(t);}}}
+async function loadTVmazeShows(){try{const response=await fetch(`${TVMAZE}/shows?page=0`);if(!response.ok)throw new Error('TVmaze request failed');const shows=await response.json();tvmazeTitles=shows.filter(x=>x.image).sort((a,b)=>(b.rating?.average||0)-(a.rating?.average||0)).slice(0,30).map(fromTVmaze);mergeTVmaze(tvmazeTitles);render();}catch(error){console.warn('TVmaze could not load. The sample titles will remain visible.',error);}}
+async function searchTVmaze(query,requestId){try{const response=await fetch(`${TVMAZE}/search/shows?q=${encodeURIComponent(query)}`);if(!response.ok)throw new Error('TVmaze search failed');const results=await response.json();if(requestId!==searchRequest)return;return results.map(x=>fromTVmaze(x.show));}catch(error){console.warn('TVmaze search failed.',error);return [];}}
+function rrEscape(value){return String(value||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function rrDate(offset=0){const d=new Date();d.setDate(d.getDate()+offset);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function rrEpisodeCard(ep,label){const show=ep.show||{};const image=(ep.image&&(ep.image.medium||ep.image.original))||(show.image&&(show.image.medium||show.image.original));const season=ep.season?`S${ep.season}`:'';const number=ep.number?`E${ep.number}`:'';return `<article class="feature-card">${image?`<img src="${rrEscape(image)}" alt="" style="width:100%;max-height:155px;object-fit:cover;border-radius:8px;margin-bottom:10px" onerror="this.style.display='none'">`:''}<span class="feature-label">${label}</span><h3>${rrEscape(show.name||'TV episode')}</h3><p><strong>${rrEscape(ep.name||'Episode')}</strong>${season||number?` · ${rrEscape(season)}${rrEscape(number)}`:''}<br>${rrEscape(ep.airdate||'Date TBA')}${ep.airtime?` · ${rrEscape(ep.airtime)}`:''}${show.network&&show.network.name?`<br>${rrEscape(show.network.name)}`:''}${show.webChannel&&show.webChannel.name?`<br>${rrEscape(show.webChannel.name)}`:''}</p>${ep.url?`<a href="${rrEscape(ep.url)}" target="_blank" rel="noopener" style="color:#ff8aa0">View episode details ↗</a>`:''}</article>`;}
+async function loadTVSchedules(){const todayBox=document.getElementById('upcomingSeriesList');const recentBox=document.getElementById('updatesList');try{const today=rrDate();const urls=[`${TVMAZE}/schedule?country=US&date=${today}`,`${TVMAZE}/schedule/web?date=${today}`];const responses=await Promise.all(urls.map(url=>fetch(url)));if(responses.some(r=>!r.ok))throw new Error('TV schedule unavailable');let episodes=[];for(const r of responses)episodes.push(...await r.json());const seen=new Set();episodes=episodes.filter(ep=>{if(seen.has(ep.id))return false;seen.add(ep.id);return true;}).sort((a,b)=>(a.airtime||'').localeCompare(b.airtime||''));todayBox.innerHTML=episodes.length?episodes.slice(0,9).map(ep=>rrEpisodeCard(ep,'AIRING TODAY')).join(''):'<p class="empty">TVmaze has no episodes listed for today. Try again later.</p>';const dates=[rrDate(-1),rrDate(-2)];const pastResponses=await Promise.all(dates.map(d=>fetch(`${TVMAZE}/schedule?country=US&date=${d}`)));let past=[];for(const r of pastResponses){if(r.ok)past.push(...await r.json());}const pastSeen=new Set();past=past.filter(ep=>{if(pastSeen.has(ep.id))return false;pastSeen.add(ep.id);return true;}).sort((a,b)=>(b.airdate||'').localeCompare(a.airdate||'')).slice(0,6);recentBox.innerHTML=past.length?past.map(ep=>rrEpisodeCard(ep,'RECENT')).join(''):'<p class="empty">No recent episodes were returned for the last two days.</p>';}catch(err){console.warn('Could not load TVmaze schedules',err);todayBox.innerHTML='<p class="empty">Could not load the live schedule. Check your connection and reload.</p>';recentBox.innerHTML='<p class="empty">Could not load recent episodes right now.</p>';}}
+// Wikidata structured metadata is CC0. Search results do not reuse third-party posters or ratings.
+const WIKIDATA='https://www.wikidata.org/w/api.php';
+const MOVIE_TYPES=new Set(['Q11424','Q24869','Q932586','Q229390','Q202866','Q506240','Q18011172']);
+const movieStatus=document.getElementById('movieStatus');
+function wikidataUrl(params){return WIKIDATA+'?'+new URLSearchParams({format:'json',origin:'*',...params});}
+function claimEntity(entity,property){return (entity.claims?.[property]||[]).map(x=>x.mainsnak?.datavalue?.value?.id).filter(Boolean);}
+function claimDate(entity,property){const val=(entity.claims?.[property]||[])[0]?.mainsnak?.datavalue?.value?.time;return val?val.replace(/^\+/,'').slice(0,4):'';}
+function isFilm(entity){const kinds=claimEntity(entity,'P31');return kinds.some(k=>MOVIE_TYPES.has(k));}
+function claimImage(entity){return (entity.claims?.P18||[])[0]?.mainsnak?.datavalue?.value||'';}
+function fromWikidata(entity){const title=entity.labels?.en?.value||entity.id;const desc=entity.descriptions?.en?.value||'Film information is limited in Wikidata.';return {id:2000000+Number(entity.id.slice(1)),wikidataId:entity.id,commonsFilename:claimImage(entity),filmClaims:{director:claimEntity(entity,'P57'),cast:claimEntity(entity,'P161'),genre:claimEntity(entity,'P136'),country:claimEntity(entity,'P495'),producer:claimEntity(entity,'P162')},title,year:claimDate(entity,'P577')||'Unknown',type:'Movie',genre:'Film',rating:'N/A',source:'Wikidata · CC0',poster:'',synopsis:desc,providers:['Streaming availability not connected'],update:'Open film metadata',externalUrl:'https://www.wikidata.org/wiki/'+entity.id};}
+// Wikimedia Commons file licenses vary. Only show files with machine-readable
+// licenses allowing commercial reuse, and link to each file page for attribution.
+const COMMONS='https://commons.wikimedia.org/w/api.php';
+function cleanHtml(v){const d=document.createElement('div');d.innerHTML=v||'';return d.textContent.trim();}
+async function enrichCommonsImages(movies,requestId){
+ const candidates=movies.filter(x=>x.commonsFilename).slice(0,12);
+ if(!candidates.length)return;
+ try{
+  const names=candidates.map(x=>'File:'+x.commonsFilename);
+  const u=COMMONS+'?'+new URLSearchParams({action:'query',format:'json',origin:'*',prop:'imageinfo',iiprop:'url|extmetadata',iiurlwidth:'360',titles:names.join('|')});
+  const response=await fetch(u);if(!response.ok)throw Error('Commons '+response.status);
+  const data=await response.json();if(requestId!==searchRequest)return;
+  const pages=Object.values(data.query?.pages||{});
+  for(const page of pages){
+   const info=page.imageinfo?.[0],meta=info?.extmetadata||{};
+   const license=cleanHtml(meta.LicenseShortName?.value||'');
+   const restriction=cleanHtml(meta.Restrictions?.value||'');
+   const safe=/^(CC0|CC BY(?:-SA)?(?: [234]\.0)?|Public domain|PD(?:-|$))/i.test(license) && !/non.?commercial|no.?derivatives/i.test(license+' '+restriction);
+   const movie=candidates.find(x=>'File:'+x.commonsFilename===page.title);
+   if(movie&&safe&&info.thumburl){movie.poster=info.thumburl;movie.imageCredit={license,author:cleanHtml(meta.Artist?.value||'Contributor'),page:info.descriptionurl||'https://commons.wikimedia.org/wiki/'+encodeURIComponent(page.title)};}
+  }
+ }catch(e){console.warn('Commons image metadata unavailable',e);}
+}
+async function searchWikidataMovies(query,requestId){try{movieStatus.textContent='Searching Wikidata movie records…';const r=await fetch(wikidataUrl({action:'wbsearchentities',search:query,language:'en',limit:'20',type:'item'}));if(!r.ok)throw Error('Search HTTP '+r.status);const data=await r.json();const ids=(data.search||[]).map(x=>x.id);if(!ids.length){if(requestId===searchRequest)movieStatus.textContent='No movie records found for that search.';return [];}
+const detail=await fetch(wikidataUrl({action:'wbgetentities',ids:ids.join('|'),languages:'en',props:'labels|descriptions|claims'}));if(!detail.ok)throw Error('Details HTTP '+detail.status);const payload=await detail.json();const movies=ids.map(id=>payload.entities?.[id]).filter(e=>e&&!e.missing&&(isFilm(e)||/\b(film|movie|cinema)\b/i.test(e.descriptions?.en?.value||''))).map(fromWikidata);
+await enrichCommonsImages(movies,requestId);
+if(requestId===searchRequest)movieStatus.textContent=movies.length?`${movies.length} movie records found · Wikidata (CC0) · Commons images only where license permits · ratings unavailable`:'No verified movie entries in these results. Try a more specific title.';return movies;
+}catch(e){console.warn('Wikidata lookup failed',e);if(requestId===searchRequest)movieStatus.textContent='Wikidata could not be reached. Try again later.';return [];}}
+async function searchAll(query,requestId){
+ const local=originalTitles.filter(t=>rrMatchesQuery(t,query));
+ const [tv,movies]=await Promise.all([searchTVmaze(query,requestId),searchWikidataMovies(query,requestId)]);
+ if(requestId!==searchRequest)return;
+ const seen=new Set();
+ const merged=[...movies,...tv,...local].filter(t=>{const k=t.type+'|'+t.title.toLowerCase()+'|'+t.year;if(seen.has(k))return false;seen.add(k);return true;});
+ titles.splice(0,titles.length,...merged);
+ rrSearchLoading(false);
+ render();
+}
+function rrMatchesQuery(t,q){return (`${t.title} ${t.genre} ${t.type} ${t.year}`).toLowerCase().includes(q.toLowerCase().trim());}
+function rrSearchLoading(loading){
+ const panel=document.getElementById('rrSearchResults'),message=document.getElementById('rrSearchMessage');
+ const q=search.value.trim();panel.classList.toggle('rr-hide',q.length<2);
+ if(q.length<2)return;
+ if(loading){message.textContent='Searching movies and TV shows…';document.getElementById('rrSearchGrid').innerHTML='';}
+}
+function render(){
+ const q=search.value.toLowerCase().trim();
+ const items=titles.filter(t=>(filter==='All'||t.type===filter)&&rrMatchesQuery(t,q));
+ grid.innerHTML=items.length?items.map(rrCardHtml).join(''):'<div class="empty">No titles match your search or filter.</div>';
+ rrWireCards(grid,items);
+ const panel=document.getElementById('rrSearchResults');
+ if(q.length>=2){
+  panel.classList.remove('rr-hide');
+  const root=document.getElementById('rrSearchGrid');
+  root.innerHTML=items.length?items.map(rrCardHtml).join(''):'<p class="empty">No matching titles found. Try a different spelling or title.</p>';
+  rrWireCards(root,items);
+  document.getElementById('rrSearchMessage').textContent=items.length?`${items.length} matching title${items.length===1?'':'s'} found`:'No results found in available sources.';
+ }else panel.classList.add('rr-hide');
+}
+// Movie credits are fetched on demand from Wikidata CC0 entity claims.
+const filmCreditCache=new Map();
+async function loadMovieCredits(movie){
+ if(!movie.wikidataId||!movie.filmClaims)return;
+ const panel=document.getElementById('movieCredits');if(!panel)return;
+ if(filmCreditCache.has(movie.wikidataId)){panel.innerHTML=filmCreditCache.get(movie.wikidataId);return;}
+ const fields=[['Director','director',5],['Cast','cast',12],['Genre','genre',5],['Country of origin','country',4],['Producer','producer',5]];
+ const ids=[...new Set(fields.flatMap(([,key,max])=>(movie.filmClaims[key]||[]).slice(0,max)))];
+ if(!ids.length){panel.textContent='No cast or crew credits are available for this film in Wikidata.';return;}
+ try{
+  const response=await fetch(wikidataUrl({action:'wbgetentities',ids:ids.join('|'),props:'labels',languages:'en'}));
+  if(!response.ok)throw new Error('Credits HTTP '+response.status);
+  const data=await response.json();
+  const html=fields.map(([heading,key,max])=>{
+   const values=(movie.filmClaims[key]||[]).slice(0,max).map(id=>{
+    const name=data.entities?.[id]?.labels?.en?.value;
+    return name?`<a href="https://www.wikidata.org/wiki/${encodeURIComponent(id)}" target="_blank" rel="noopener" style="color:#ff8aa0">${rrEscape(name)}</a>`:'';
+   }).filter(Boolean);
+   return values.length?`<p><strong>${heading}:</strong> ${values.join(', ')}</p>`:'';
+  }).filter(Boolean).join('')||'<p>No labeled credits available.</p>';
+  filmCreditCache.set(movie.wikidataId,html);
+  if(document.getElementById('movieCredits')?.dataset.movie===movie.wikidataId)document.getElementById('movieCredits').innerHTML=html;
+ }catch(error){console.warn('Movie credits unavailable',error);if(document.getElementById('movieCredits')?.dataset.movie===movie.wikidataId)document.getElementById('movieCredits').textContent='Credits could not be loaded. Please try again later.';}
+}
+
+// Enriched title pages: TVmaze cast, seasons, episode guides and related shows.
+const showDetailCache=new Map();
+function rrSafeLink(url){try{const u=new URL(url);return ['https:','http:'].includes(u.protocol)?u.href:'';}catch{return '';}}
+async function loadShowExtras(show){
+ const target=document.getElementById('showExtras');if(!target||!show.tvmazeId)return;
+ const showId=show.tvmazeId;
+ if(showDetailCache.has(showId)){target.innerHTML=showDetailCache.get(showId);return;}
+ try{
+  const [castR,seasonsR,episodesR]=await Promise.all([
+   fetch(`${TVMAZE}/shows/${showId}/cast`),fetch(`${TVMAZE}/shows/${showId}/seasons`),fetch(`${TVMAZE}/shows/${showId}/episodes`)]);
+  if(!castR.ok||!seasonsR.ok||!episodesR.ok)throw Error('TVmaze details temporarily unavailable');
+  const [cast,seasons,episodes]=await Promise.all([castR.json(),seasonsR.json(),episodesR.json()]);
+  const people=cast.slice(0,12).map(x=>`<div class="rr-person">${x.person?.image?.medium?`<img loading="lazy" src="${rrEscape(x.person.image.medium)}" alt="">`:''}<div><strong>${rrEscape(x.person?.name||'Unknown')}</strong><small>${rrEscape(x.character?.name||'Cast member')}</small></div></div>`).join('');
+  const seasonOptions=seasons.map(x=>`<option value="${Number(x.number)}">Season ${Number(x.number)}${x.episodeOrder?' · '+Number(x.episodeOrder)+' episodes':''}</option>`).join('');
+  const html=`<section class="rr-extra"><h3>Cast & characters</h3><div class="rr-people">${people||'<p>Cast unavailable.</p>'}</div><h3>Seasons & episodes</h3>${seasons.length?`<label for="rrSeason">Choose a season</label> <select id="rrSeason" class="rr-select">${seasonOptions}</select><div id="rrEpisodeList"></div>`:'<p>Season information unavailable.</p>'}<h3>More like this</h3><p class="small">Explore other series sharing a genre. These are suggestions from the titles currently loaded.</p><div class="rr-related">${titles.filter(x=>x.tvmazeId&&x.tvmazeId!==showId&&x.genre.split(' · ').some(g=>g&&show.genre.includes(g))).slice(0,5).map(x=>`<button type="button" class="rr-related-btn" data-related="${x.id}">${rrEscape(x.title)}</button>`).join('')||'<span class="small">No related titles loaded yet.</span>'}</div></section>`;
+  showDetailCache.set(showId,html);
+  if(!document.getElementById('showExtras')||document.getElementById('showExtras').dataset.show!==String(showId))return;
+  target.innerHTML=html;
+  const selector=target.querySelector('#rrSeason');
+  function renderEpisodes(){if(!selector)return;const selected=Number(selector.value);const list=episodes.filter(ep=>ep.season===selected).slice(0,120);target.querySelector('#rrEpisodeList').innerHTML=list.length?list.map(ep=>`<div class="rr-episode"><strong>${ep.number?'E'+ep.number+' · ':''}${rrEscape(ep.name||'Untitled episode')}</strong><span class="small">${rrEscape(ep.airdate||'Airdate TBA')}</span>${ep.summary?`<p>${rrEscape(ep.summary.replace(/<[^>]*>/g,' ').trim()).slice(0,280)}</p>`:''}</div>`).join(''):'<p class="small">No episodes listed for this season.</p>';}
+  if(selector){selector.addEventListener('change',renderEpisodes);renderEpisodes();}
+  target.querySelectorAll('[data-related]').forEach(b=>b.addEventListener('click',()=>openDetail(Number(b.dataset.related))));
+ }catch(e){console.warn(e);if(document.getElementById('showExtras')?.dataset.show===String(showId))target.textContent='Could not load cast or episodes. Try opening the title again later.';}
+}
+const RR_WATCH_KEY='reelradar.watchlist.v1';
+let rrWatchlist=[];
+try{const stored=JSON.parse(localStorage.getItem(RR_WATCH_KEY)||'[]');if(Array.isArray(stored))rrWatchlist=stored.filter(x=>x&&typeof x.key==='string'&&typeof x.title==='string').slice(0,250);}catch(e){console.warn('Watchlist storage unavailable',e);}
+function rrTitleKey(t){return t.wikidataId?'wikidata:'+t.wikidataId:t.tvmazeId?'tvmaze:'+t.tvmazeId:'sample:'+t.type+':'+t.title+':'+t.year;}
+function rrIsSaved(t){return rrWatchlist.some(x=>x.key===rrTitleKey(t));}
+function rrPersist(){if(window.rrCloudUser){window.rrSyncWatchlist?.();return;}try{localStorage.setItem(RR_WATCH_KEY,JSON.stringify(rrWatchlist));}catch(e){console.warn('Could not save guest watchlist',e);}}
+function rrToggleSaved(t){const key=rrTitleKey(t),i=rrWatchlist.findIndex(x=>x.key===key);if(i>=0)rrWatchlist.splice(i,1);else rrWatchlist.unshift({key,title:t.title,year:t.year,type:t.type,genre:t.genre||'',poster:t.poster||'',rating:t.rating||'N/A',source:t.source||'',synopsis:t.synopsis||'',providers:t.providers||[],tvmazeId:t.tvmazeId||null,wikidataId:t.wikidataId||null,externalUrl:t.externalUrl||'',imageCredit:t.imageCredit||null,update:t.update||''});rrPersist();rrRenderWatchlist();if(typeof render==='function')render();rrUpdateSaveButton(t);}
+function rrUpdateSaveButton(t){const b=document.getElementById('rrSave');if(!b)return;const saved=rrIsSaved(t);b.setAttribute('aria-pressed',String(saved));b.textContent=saved?'♥ Remove from watchlist':'♡ Save to watchlist';b.onclick=()=>rrToggleSaved(t);}
+function rrCardHtml(t){const key=rrTitleKey(t),saved=rrIsSaved(t);return `<article class="card" data-watch-key="${rrEscape(key)}"><div class="poster">${t.poster?`<img loading="lazy" src="${rrEscape(t.poster)}" alt="${rrEscape(t.title)} image" onerror="this.style.display='none'">`:'<div class="poster-placeholder">🎬</div>'}<button class="rr-save-card" type="button" aria-label="${saved?'Remove from':'Add to'} watchlist: ${rrEscape(t.title)}" aria-pressed="${saved}" data-save-key="${rrEscape(key)}">${saved?'♥':'♡'}</button>${t.rating&&t.rating!=='N/A'?`<span class="rating">★ ${rrEscape(t.rating)}</span>`:''}</div><h3>${rrEscape(t.title)}</h3><div class="meta">${rrEscape(t.year)} · ${rrEscape(t.type)}</div></article>`;}
+function rrWireCards(root,items){root.querySelectorAll('[data-watch-key]').forEach(card=>{const t=items.find(x=>rrTitleKey(x)===card.dataset.watchKey);if(!t)return;card.addEventListener('click',e=>{if(e.target.closest('[data-save-key]'))return;rrOpenSavedOrLive(t);});card.querySelector('[data-save-key]')?.addEventListener('click',e=>{e.stopPropagation();rrToggleSaved(t);});});}
+function rrOpenSavedOrLive(t){const existing=titles.find(x=>rrTitleKey(x)===rrTitleKey(t));if(existing)openDetail(existing.id);else{const tempId=-Math.floor(Math.random()*1e9)-1;const temp={...t,id:tempId};titles.push(temp);openDetail(tempId);}}
+function rrRenderWatchlist(){const grid=document.getElementById('watchlistGrid');const empty=document.getElementById('watchlistEmpty');if(!grid)return;grid.innerHTML=rrWatchlist.map(rrCardHtml).join('');empty.style.display=rrWatchlist.length?'none':'block';document.getElementById('watchlistCount').textContent='('+rrWatchlist.length+')';rrWireCards(grid,rrWatchlist);}
+function openDetail(id){const t=titles.find(x=>x.id===id);if(!t)return;const safeTitle=rrEscape(t.title);const trailerQuery=encodeURIComponent(t.title+' '+t.year+' official trailer');const trailerUrl='https://www.youtube.com/results?search_query='+trailerQuery;document.getElementById('detail').innerHTML=`<div class="detail">${t.poster?`<img src="${rrEscape(t.poster)}" alt="${safeTitle} image" onerror="this.style.display='none'">`:`<div class="poster-placeholder">🎬<small>No licensed poster</small></div>`}<div><div class="eyebrow">${rrEscape(t.type)} · ${rrEscape(t.year)}</div><h2>${safeTitle}</h2><div class="meta">${t.rating!=='N/A'?`★ ${rrEscape(t.rating)} · `:''}${rrEscape(t.source)} · ${rrEscape(t.genre)}</div><p>${rrEscape(t.synopsis)}</p><p><a class="btn" href="${trailerUrl}" target="_blank" rel="noopener noreferrer">Search official trailers ↗</a></p><p class="small">Trailer search opens YouTube; ReelRadar does not claim the videos are official or licensed for embedding.</p>${t.wikidataId?`<h3>Film credits</h3><div id="movieCredits" data-movie="${rrEscape(t.wikidataId)}" class="small">Loading director, cast and film details…</div>`:''}<h3>Where to watch</h3><div>${(t.providers||[]).map(p=>`<span class="provider">${rrEscape(p)}</span>`).join('')}</div><p class="small">Streaming availability has not been verified for your region.</p>${t.update?`<h3>Latest update</h3><p>${rrEscape(t.update)}</p>`:''}${t.imageCredit?`<p class="small">Image: ${rrEscape(t.imageCredit.author)} · ${rrEscape(t.imageCredit.license)} · <a href="${rrSafeLink(t.imageCredit.page)}" target="_blank" rel="noopener" style="color:#ff8aa0">License and attribution ↗</a></p>`:''}${t.externalUrl?`<p><a href="${rrSafeLink(t.externalUrl)}" target="_blank" rel="noopener" style="color:#ff8aa0">View source on Wikidata ↗</a></p>`:''}</div></div>${t.tvmazeId?`<div id="showExtras" data-show="${t.tvmazeId}" class="rr-extra">Loading cast, seasons and episodes…</div>`:''}`;document.getElementById('modal').classList.add('open');rrUpdateSaveButton(t);if(t.wikidataId)loadMovieCredits(t);if(t.tvmazeId)loadShowExtras(t);}
+document.getElementById('rrExpand').addEventListener('click',()=>{const modal=document.getElementById('modal');const expanded=modal.classList.toggle('rr-fullscreen');const b=document.getElementById('rrExpand');b.setAttribute('aria-pressed',String(expanded));b.textContent=expanded?'⤡ Exit full screen':'⛶ Full screen';});
+rrRenderWatchlist();
+document.querySelectorAll('.chip').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.chip').forEach(x=>x.classList.remove('active'));b.classList.add('active');filter=b.dataset.filter;render()}));search.addEventListener('input',()=>{
+ clearTimeout(searchTimer);const query=search.value.trim();++searchRequest;
+ if(query.length<2){movieStatus.textContent='Search movies using Wikidata. Eligible Commons images are shown with attribution; movie ratings are not yet licensed.';titles.splice(0,titles.length,...originalTitles);mergeTVmaze(tvmazeTitles);render();return;}
+ filter='All';document.querySelectorAll('.chip[data-filter]').forEach(b=>b.classList.toggle('active',b.dataset.filter==='All'));
+ const local=originalTitles.filter(t=>rrMatchesQuery(t,query));
+ titles.splice(0,titles.length,...local);render();rrSearchLoading(true);
+ document.getElementById('rrSearchMessage').textContent=local.length?`Showing ${local.length} matching saved examples. Searching more titles…`:'Searching movies and TV shows…';
+ if(local.length){const root=document.getElementById('rrSearchGrid');root.innerHTML=local.map(rrCardHtml).join('');rrWireCards(root,local);}
+ const requestId=searchRequest;searchTimer=setTimeout(()=>searchAll(query,requestId),350);
+});
+document.getElementById('rrClearSearch').addEventListener('click',()=>{search.value='';search.dispatchEvent(new Event('input'));search.focus();});
+search.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();search.blur();document.getElementById('rrSearchResults').scrollIntoView({block:'start',behavior:'smooth'});}});document.getElementById('close').addEventListener('click',()=>document.getElementById('modal').classList.remove('open'));document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal')e.currentTarget.classList.remove('open')});document.addEventListener('keydown',e=>{if(e.key==='Escape')document.getElementById('modal').classList.remove('open')});
+function featureCards(id,items){document.getElementById(id).innerHTML=items.map(x=>`<article class="feature-card"><span class="feature-label">${x[2]}</span><h3>${x[0]}</h3><p>${x[1]}</p></article>`).join('')}
+featureCards('theatersList', [['Find nearby cinemas','Choose a city or ZIP code to find theaters, showtimes, formats and ticket links.','CINEMA GUIDE'],['Today’s showtimes','Browse screening times by date, language and format when provider data is available.','SHOWTIMES'],['Ticket links','Open official cinema or ticketing pages to check prices and availability.','BOOKING']]);
+featureCards('upcomingMoviesList', [['Upcoming movie releases','Browse announced release dates, posters, trailers, cast and synopsis.','MOVIES'],['Release calendar','Filter upcoming films by month, genre and country.','CALENDAR'],['Release date alerts','A future feature for saving titles and tracking date changes.','COMING SOON']]);
+// TV schedule is populated live from TVmaze.
+// Recently aired episodes are populated live from TVmaze.
+featureCards('newsList', [['Casting and production','News about confirmed castings, directors, filming and production.','INDUSTRY'],['Trailers and first looks','New trailers, teasers, posters and official announcements.','TRAILERS'],['Renewals and cancellations','Updates on series renewals, cancellations and release delays.','TV NEWS']]);render();loadTVmazeShows();loadTVSchedules();
+
+// Curated family discovery: exact-match allowlist, not a substitute for parental review.
+async function rrLoadKids(){
+ const root=document.getElementById('kidsGrid');
+ const names=['Bluey','Sesame Street','Peppa Pig','Daniel Tiger’s Neighborhood','Paw Patrol','The Magic School Bus'];
+ try{
+  const results=await Promise.all(names.map(async name=>{
+   const r=await fetch(`${TVMAZE}/search/shows?q=${encodeURIComponent(name)}`);
+   if(!r.ok)return null;
+   const matches=await r.json();
+   const normalize=x=>x.toLowerCase().replace(/[^a-z0-9]/g,'');
+   const match=matches.find(x=>normalize(x.show.name)===normalize(name));
+   return match?fromTVmaze(match.show):null;
+  }));
+  const shows=results.filter(Boolean);
+  if(!shows.length){root.innerHTML='<p class="empty">Family show listings are unavailable right now. Please try again later.</p>';return;}
+  root.innerHTML=shows.map(rrCardHtml).join('');
+  rrWireCards(root,shows);
+ }catch(err){console.warn('Kids section unavailable',err);root.innerHTML='<p class="empty">Could not load family series. Check your internet connection and reload.</p>';}
+}
+
+// Homepage discovery. Curated selections are editorial examples, not a popularity ranking.
+const rrHomeGroups={preschool:['Bluey','Peppa Pig','Daniel Tiger’s Neighborhood'],animation:['Bluey','Adventure Time','The Amazing World of Gumball'],educational:['Sesame Street','The Magic School Bus','Wild Kratts'],teen:['Heartstopper','The Baby-Sitters Club','Julie and the Phantoms']};
+const rrKoreanNames=['Queen of Tears','Business Proposal','Crash Landing on You','Hometown Cha-Cha-Cha','Extraordinary Attorney Woo'];
+async function rrExactShow(name){
+ try{const r=await fetch(`${TVMAZE}/search/shows?q=${encodeURIComponent(name)}`);if(!r.ok)throw Error('TVmaze '+r.status);const data=await r.json();const norm=x=>String(x).toLowerCase().replace(/[^a-z0-9]/g,'');const hit=data.find(x=>norm(x.show.name)===norm(name));return hit?fromTVmaze(hit.show):null}catch(e){console.warn('TVmaze discovery failed:',name,e);return null;}
+}
+function rrPaintCards(id,items,empty='No matching titles are currently available.'){
+ const root=document.getElementById(id);if(!root)return;root.innerHTML=items.length?items.map(rrCardHtml).join(''):`<p class="empty">${empty}</p>`;rrWireCards(root,items);
+}
+let rrFamilyData={};
+function rrPaintFamily(){
+ const chosen=document.getElementById('rrAge').value,hide=document.getElementById('rrHideTeen').checked;
+ const groups=['preschool','animation','educational','family','teen'].filter(k=>(chosen==='all'||chosen===k)&&!(hide&&k==='teen'));
+ const names={preschool:'Preschool',animation:'Animation',educational:'Educational shows',family:'Family movies',teen:'Teen shows'};
+ const root=document.getElementById('rrFamilyGroups');root.innerHTML=groups.map(k=>`<section class="rr-family-block"><h3>${names[k]}</h3><div class="grid" data-family="${k}"></div></section>`).join('')||'<p class="empty">Teen suggestions are hidden by your viewing preference.</p>';
+ for(const k of groups){const el=root.querySelector(`[data-family="${k}"]`);const items=rrFamilyData[k]||[];el.innerHTML=items.length?items.map(rrCardHtml).join(''):'<p class="empty">No titles available.</p>';rrWireCards(el,items);}
+}
+async function rrLoadHome(){
+ const movies=titles.filter(x=>x.type==='Movie').slice(0,10);rrPaintCards('rrMoviePicks',movies,'Search above to discover movie records.');
+ const allNames=[...new Set([...Object.values(rrHomeGroups).flat(),...rrKoreanNames,'The Rookie','The Last of Us','The Bear','Abbott Elementary','Only Murders in the Building'])];
+ // Avoid firing dozens of requests at once; TVmaze applies rate limits.
+ const found=new Map();for(let i=0;i<allNames.length;i+=4){const batch=await Promise.all(allNames.slice(i,i+4).map(async name=>[name,await rrExactShow(name)]));for(const [name,show] of batch)if(show)found.set(name,show);}
+ const tv=['The Rookie','The Last of Us','The Bear','Abbott Elementary','Only Murders in the Building'].map(x=>found.get(x)).filter(Boolean);
+ rrPaintCards('rrTvPicks',tv,'TV series are unavailable. Check your connection.');
+ rrPaintCards('rrKdramaPicks',rrKoreanNames.map(x=>found.get(x)).filter(Boolean),'K-Drama data is unavailable right now.');
+ for(const [group,names] of Object.entries(rrHomeGroups))rrFamilyData[group]=names.map(x=>found.get(x)).filter(Boolean);
+ // Family movies are illustrative only; no age certification is implied.
+ rrFamilyData.family=titles.filter(x=>x.type==='Movie'&&['Inside Out 2','Spider-Man: Across the Spider-Verse'].includes(x.title));
+ rrPaintFamily();
+}
+const rrAgeSelect=document.getElementById('rrAge'),rrHideTeen=document.getElementById('rrHideTeen');
+try{rrHideTeen.checked=localStorage.getItem('rr-hide-teen')==='yes'}catch(e){}
+rrAgeSelect.addEventListener('change',rrPaintFamily);
+rrHideTeen.addEventListener('change',()=>{try{localStorage.setItem('rr-hide-teen',rrHideTeen.checked?'yes':'no')}catch(e){}rrPaintFamily()});
+
+rrLoadHome();
+</script>
+
+<script>
+(function(){
+ const button=document.getElementById('rrMenuToggle');
+ const nav=document.getElementById('rrMainNav');
+ if(!button||!nav)return;
+ function setOpen(open){nav.classList.toggle('rr-nav-open',open);button.setAttribute('aria-expanded',String(open));button.setAttribute('aria-label',open?'Close navigation':'Open navigation');button.textContent=open?'×':'☰';}
+ button.addEventListener('click',()=>setOpen(button.getAttribute('aria-expanded')!=='true'));
+ nav.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>setOpen(false)));
+ document.addEventListener('keydown',e=>{if(e.key==='Escape')setOpen(false)});
+})();
+</script>
+
+<div class="rr-auth-backdrop" id="rrAuth" role="dialog" aria-modal="true" aria-label="ReelRadar account" aria-hidden="true">
+  <div class="rr-auth-panel">
+    <button class="rr-auth-close" type="button" id="rrAuthClose" aria-label="Close account panel">×</button>
+    <div class="logo">Reel<span>Radar</span></div>
+    <h2 id="rrAuthHeading">Welcome back</h2>
+    <p id="rrAuthIntro">Sign in to your ReelRadar account.</p>
+    <div class="rr-auth-tabs"><button type="button" class="rr-auth-tab active" data-auth-mode="signin" aria-pressed="true">Sign in</button><button type="button" class="rr-auth-tab" data-auth-mode="signup" aria-pressed="false">Create account</button></div>
+    <form class="rr-auth-form" id="rrAuthForm" autocomplete="off">
+      <label>Username<input id="rrAuthUsername" name="username" autocomplete="username" minlength="3" maxlength="30" pattern="[A-Za-z0-9_]+" title="Use letters, numbers or underscores" required placeholder="Your username"></label>
+      <label>Email<input id="rrAuthEmail" type="email" name="email" autocomplete="email" required placeholder="you@example.com"></label>
+      <label>Password<input id="rrAuthPassword" name="password" type="password" autocomplete="current-password" minlength="8" required placeholder="At least 8 characters"></label>
+      <button class="btn rr-auth-submit" type="submit" id="rrAuthSubmit">Sign in</button>
+    </form>
+    <p class="rr-auth-status" id="rrAuthStatus" role="status" aria-live="polite"></p>
+    <p class="rr-auth-note">Sign up with email, username and password. Confirm your email if prompted. Passwords are handled by Supabase Auth, not stored by ReelRadar.</p>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+// ReelRadar Supabase public browser configuration.
+// NEVER use a Supabase secret key or service_role key here.
+const RR_SUPABASE_URL = 'https://efaxixasqrjlgvrrqrsa.supabase.co';
+const RR_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_J2NijroBpLo-jVzLL_LTWQ_a3tFzvFW';
+(function(){
+ const root=document.getElementById('rrAuth'),form=document.getElementById('rrAuthForm');
+ const username=document.getElementById('rrAuthUsername'),email=document.getElementById('rrAuthEmail'),password=document.getElementById('rrAuthPassword');
+ const status=document.getElementById('rrAuthStatus'),trigger=document.getElementById('rrAccountOpen');
+ const ready=RR_SUPABASE_URL.startsWith('https://')&&RR_SUPABASE_PUBLISHABLE_KEY.startsWith('sb_publishable_')&&!!window.supabase;
+ const client=ready?window.supabase.createClient(RR_SUPABASE_URL,RR_SUPABASE_PUBLISHABLE_KEY):null;
+ let mode='signin',currentUser=null,previousFocus=null,syncQueue=Promise.resolve();
+ window.rrCloudUser=null;
+ const setStatus=(message)=>{status.textContent=message;};
+ function setMode(next){mode=next;const signup=mode==='signup';document.getElementById('rrAuthHeading').textContent=signup?'Create your account':'Welcome back';document.getElementById('rrAuthIntro').textContent=signup?'Create a ReelRadar profile and cloud watchlist.':'Sign in with your email and password.';document.getElementById('rrAuthSubmit').textContent=signup?'Create account':'Sign in';username.closest('label').hidden=!signup;username.required=signup;password.autocomplete=signup?'new-password':'current-password';document.querySelectorAll('.rr-auth-tab').forEach(b=>{const selected=b.dataset.authMode===mode;b.classList.toggle('active',selected);b.setAttribute('aria-pressed',String(selected))});setStatus(ready?'':'Set your Supabase URL and publishable key in the HTML file first.');form.reset();}
+ function open(){previousFocus=document.activeElement;root.classList.add('open');root.setAttribute('aria-hidden','false');setMode('signin');email.focus();}
+ function close(){root.classList.remove('open');root.setAttribute('aria-hidden','true');form.reset();previousFocus?.focus();}
+ trigger.addEventListener('click',()=>{if(currentUser){if(confirm('Sign out of ReelRadar?'))client.auth.signOut().catch(e=>alert(e.message));}else open();});
+ document.getElementById('rrAuthClose').addEventListener('click',close);
+ root.addEventListener('click',e=>{if(e.target===root)close()});
+ document.querySelectorAll('.rr-auth-tab').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.authMode)));
+ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&root.classList.contains('open'))close();});
+ async function loadCloud(user){const {data,error}=await client.from('watchlist').select('title_key,item').eq('user_id',user.id).order('created_at',{ascending:false});if(error)throw error;rrWatchlist=(data||[]).map(x=>x.item).filter(x=>x&&typeof x.key==='string');rrRenderWatchlist();render();}
+ async function setUser(user){currentUser=user;window.rrCloudUser=user;trigger.textContent=user?'Sign out':'Sign in / Join';if(user){try{await loadCloud(user)}catch(e){console.error(e);alert('Cloud watchlist could not load: '+e.message)}}else{try{const saved=JSON.parse(localStorage.getItem(RR_WATCH_KEY)||'[]');rrWatchlist=Array.isArray(saved)?saved:[]}catch(e){rrWatchlist=[]}rrRenderWatchlist();render();}}
+ window.rrSyncWatchlist=function(){if(!client||!currentUser)return;const userId=currentUser.id;const snapshot=rrWatchlist.map(x=>({...x}));syncQueue=syncQueue.then(async()=>{if(!currentUser||currentUser.id!==userId)return;const {data:existing,error:readError}=await client.from('watchlist').select('title_key').eq('user_id',userId);if(readError)throw readError;const desired=new Set(snapshot.map(x=>x.key));const removed=(existing||[]).filter(x=>!desired.has(x.title_key)).map(x=>x.title_key);if(removed.length){const {error}=await client.from('watchlist').delete().eq('user_id',userId).in('title_key',removed);if(error)throw error;}if(snapshot.length){const {error}=await client.from('watchlist').upsert(snapshot.map(x=>({user_id:userId,title_key:x.key,item:x})),{onConflict:'user_id,title_key'});if(error)throw error;}}).catch(e=>{console.error('Watchlist sync failed',e);alert('Could not sync watchlist: '+e.message)});};
+ form.addEventListener('submit',async e=>{e.preventDefault();if(!client){setStatus('Connect your Supabase project first.');return;}const submit=document.getElementById('rrAuthSubmit');submit.disabled=true;setStatus('Please wait…');try{if(mode==='signup'){const name=username.value.trim();if(!/^[A-Za-z0-9_]{3,30}$/.test(name))throw Error('Username must be 3–30 letters, numbers or underscores.');const {data,error}=await client.auth.signUp({email:email.value.trim(),password:password.value,options:{data:{username:name},emailRedirectTo:location.origin+location.pathname}});if(error)throw error;if(data.session){setStatus('Account created!');close();}else setStatus('Check your email for a confirmation link, then sign in.');}else{const {error}=await client.auth.signInWithPassword({email:email.value.trim(),password:password.value});if(error)throw error;close();}}catch(err){setStatus(err.message||'Authentication failed.')}finally{password.value='';submit.disabled=false;}});
+ if(client){client.auth.onAuthStateChange((_event,session)=>{setTimeout(()=>setUser(session?.user||null),0)});}else{setMode('signin');}
+})();
+</script></body></html>
