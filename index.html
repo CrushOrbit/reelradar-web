@@ -40,6 +40,12 @@ main{max-width:1380px}.rr-quick-nav{display:flex;gap:10px;overflow-x:auto;scroll
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.card,.feature-card,.poster img{transition:none}}
 
  .rr-search-results{margin:0 0 22px;padding:16px;border:1px solid #454052;border-radius:16px;background:#16131f}.rr-search-results .section-head{margin:0 0 12px}.rr-search-results .grid{margin-top:14px}.rr-search-results .rr-home-note{margin:6px 0;color:#d6cbd2} 
+
+/* Respect hidden form fields even when label has display:grid. */
+.rr-auth-form [hidden]{display:none!important}
+.rr-google-btn{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;padding:13px;border:1px solid #555568;border-radius:10px;background:#fff;color:#202124;font-weight:750;font-size:15px;cursor:pointer}
+.rr-google-btn:hover{background:#f1f3f4}.rr-google-btn:disabled{opacity:.55;cursor:wait}
+.rr-auth-divider{display:flex;align-items:center;gap:12px;color:#b7b7c6;font-size:12px;margin:16px 0}.rr-auth-divider:before,.rr-auth-divider:after{content:"";height:1px;background:#414152;flex:1}
 </style>
 </head>
 <body>
@@ -381,8 +387,10 @@ rrLoadHome();
       <label>Password<input id="rrAuthPassword" name="password" type="password" autocomplete="current-password" minlength="8" required placeholder="At least 8 characters"></label>
       <button class="btn rr-auth-submit" type="submit" id="rrAuthSubmit">Sign in</button>
     </form>
+    <div class="rr-auth-divider">or</div>
+    <button class="rr-google-btn" type="button" id="rrGoogleSignIn"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6C44.4 38.03 46.98 31.88 46.98 24.55z"/><path fill="#FBBC05" d="M10.53 28.59A14.42 14.42 0 0 1 9.75 24c0-1.59.27-3.13.76-4.59l-7.98-6.19A23.86 23.86 0 0 0 0 24c0 3.87.93 7.52 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.92-2.13 15.89-5.8l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.97 6.19C6.51 42.62 14.62 48 24 48z"/></svg><span id="rrGoogleText">Continue with Google</span></button>
     <p class="rr-auth-status" id="rrAuthStatus" role="status" aria-live="polite"></p>
-    <p class="rr-auth-note">Sign up with email, username and password. Confirm your email if prompted. Passwords are handled by Supabase Auth, not stored by ReelRadar.</p>
+    <p class="rr-auth-note">Use email and password or Google. New email accounts may require confirmation. Passwords are handled by Supabase Auth, not stored by ReelRadar.</p>
   </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -395,15 +403,17 @@ const RR_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_J2NijroBpLo-jVzLL_LTWQ_a3tFz
  const root=document.getElementById('rrAuth'),form=document.getElementById('rrAuthForm');
  const username=document.getElementById('rrAuthUsername'),email=document.getElementById('rrAuthEmail'),password=document.getElementById('rrAuthPassword');
  const status=document.getElementById('rrAuthStatus'),trigger=document.getElementById('rrAccountOpen');
+ const googleButton=document.getElementById('rrGoogleSignIn');
  const ready=RR_SUPABASE_URL.startsWith('https://')&&RR_SUPABASE_PUBLISHABLE_KEY.startsWith('sb_publishable_')&&!!window.supabase;
  const client=ready?window.supabase.createClient(RR_SUPABASE_URL,RR_SUPABASE_PUBLISHABLE_KEY):null;
  let mode='signin',currentUser=null,previousFocus=null,syncQueue=Promise.resolve();
  window.rrCloudUser=null;
  const setStatus=(message)=>{status.textContent=message;};
- function setMode(next){mode=next;const signup=mode==='signup';document.getElementById('rrAuthHeading').textContent=signup?'Create your account':'Welcome back';document.getElementById('rrAuthIntro').textContent=signup?'Create a ReelRadar profile and cloud watchlist.':'Sign in with your email and password.';document.getElementById('rrAuthSubmit').textContent=signup?'Create account':'Sign in';username.closest('label').hidden=!signup;username.required=signup;password.autocomplete=signup?'new-password':'current-password';document.querySelectorAll('.rr-auth-tab').forEach(b=>{const selected=b.dataset.authMode===mode;b.classList.toggle('active',selected);b.setAttribute('aria-pressed',String(selected))});setStatus(ready?'':'Set your Supabase URL and publishable key in the HTML file first.');form.reset();}
+ function setMode(next){mode=next;const signup=mode==='signup';document.getElementById('rrAuthHeading').textContent=signup?'Create your account':'Welcome back';document.getElementById('rrAuthIntro').textContent=signup?'Create a ReelRadar profile and cloud watchlist.':'Sign in with email and password or Google.';document.getElementById('rrAuthSubmit').textContent=signup?'Create account':'Sign in';username.closest('label').hidden=!signup;username.disabled=!signup;username.required=signup;password.autocomplete=signup?'new-password':'current-password';document.querySelectorAll('.rr-auth-tab').forEach(b=>{const selected=b.dataset.authMode===mode;b.classList.toggle('active',selected);b.setAttribute('aria-pressed',String(selected))});setStatus(ready?'':'Set your Supabase URL and publishable key in the HTML file first.');form.reset();}
  function open(){previousFocus=document.activeElement;root.classList.add('open');root.setAttribute('aria-hidden','false');setMode('signin');email.focus();}
  function close(){root.classList.remove('open');root.setAttribute('aria-hidden','true');form.reset();previousFocus?.focus();}
  trigger.addEventListener('click',()=>{if(currentUser){if(confirm('Sign out of ReelRadar?'))client.auth.signOut().catch(e=>alert(e.message));}else open();});
+ googleButton.addEventListener('click',async()=>{if(!client){setStatus('Supabase authentication is unavailable.');return;}googleButton.disabled=true;setStatus('Connecting to Google…');try{const {error}=await client.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+location.pathname}});if(error)throw error;}catch(err){setStatus(err.message||'Google sign-in could not start.');googleButton.disabled=false;}});
  document.getElementById('rrAuthClose').addEventListener('click',close);
  root.addEventListener('click',e=>{if(e.target===root)close()});
  document.querySelectorAll('.rr-auth-tab').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.authMode)));
