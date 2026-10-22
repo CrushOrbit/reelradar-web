@@ -46,21 +46,42 @@ main{max-width:1380px}.rr-quick-nav{display:flex;gap:10px;overflow-x:auto;scroll
 .rr-google-btn{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;padding:13px;border:1px solid #555568;border-radius:10px;background:#fff;color:#202124;font-weight:750;font-size:15px;cursor:pointer}
 .rr-google-btn:hover{background:#f1f3f4}.rr-google-btn:disabled{opacity:.55;cursor:wait}
 .rr-auth-divider{display:flex;align-items:center;gap:12px;color:#b7b7c6;font-size:12px;margin:16px 0}.rr-auth-divider:before,.rr-auth-divider:after{content:"";height:1px;background:#414152;flex:1}
+
+/* ReelRadar Global Discovery */
+.rr-global-nav{display:flex;gap:9px;overflow-x:auto;padding:13px 0 20px;scrollbar-width:none}
+.rr-global-nav a{white-space:nowrap;background:#211b2a;color:#fff;border:1px solid #504051;border-radius:999px;padding:10px 14px;text-decoration:none;font-size:12px;font-weight:700}
+.rr-global-nav a:hover{border-color:#fa365f}
+.rr-global-head{margin-top:36px;display:flex;justify-content:space-between;align-items:end;gap:12px}
+.rr-global-head h2{font-size:clamp(21px,3vw,28px);margin:0 0 4px}
+.rr-global-head p{margin:0;color:#b4b6c6;font-size:12px}
+.rr-global-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:16px;margin-top:15px}
+.rr-season-spotlight{background:linear-gradient(110deg,#421c31,#151521 65%);border:1px solid #82435b;border-radius:18px;padding:22px;margin:20px 0 25px}
+.rr-season-spotlight h2{margin:4px 0 8px;font-size:clamp(25px,4vw,37px)}
+.rr-season-spotlight .rr-global-grid{margin-top:17px}
+.rr-global-loading{color:#b4b6c6;padding:18px 0}
+@media(max-width:850px){.rr-global-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:520px){.rr-global-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.rr-season-spotlight{padding:15px}.rr-global-head{margin-top:29px}}
+</style>
+<style>
+.rr-ent-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:15px 0}.rr-ent-controls select{background:#20202b;color:white;border:1px solid #454554;border-radius:9px;padding:10px}.rr-ent-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}.rr-ent-card{display:flex;flex-direction:column;gap:9px;background:#171823;border:1px solid #383848;border-radius:14px;padding:16px;color:#f7f7fb;text-decoration:none;min-width:0}.rr-ent-card:hover{border-color:#ff365d}.rr-ent-card h3{font-size:15px;line-height:1.4;margin:0}.rr-ent-card .meta{line-height:1.5}.rr-ent-card img{height:85px;width:85px;border-radius:12px;object-fit:cover}.rr-ent-card .rr-ent-link{color:#ff9db2;font-size:12px;font-weight:700}
 </style>
 </head>
 <body>
-<header><div class="nav"><a class="rr-brand" href="#top" aria-label="ReelRadar home"><div class="logo">Reel<span>Radar</span></div></a><button id="rrMenuToggle" class="rr-menu-toggle" aria-label="Open navigation" aria-expanded="false" aria-controls="rrMainNav">☰</button><nav id="rrMainNav"><a href="#trending">Discover</a><a href="#movies">Movies</a><a href="#series">TV Shows</a><a href="#theaters">In Theaters</a><a href="#upcoming-movies">Upcoming Movies</a><a href="#upcoming-series">Upcoming Series</a><a href="#news">News</a><a href="#kids">Kids & Family</a><a href="#watchlist">My Watchlist</a></nav><button type="button" class="rr-account-trigger" id="rrAccountOpen">Sign in / Join</button><input id="search" class="search" placeholder="Search movies & shows…" aria-label="Search movies and shows" /></div></header>
+<header><div class="nav"><a class="rr-brand" href="#top" aria-label="ReelRadar home"><div class="logo">Reel<span>Radar</span></div></a><button id="rrMenuToggle" class="rr-menu-toggle" aria-label="Open navigation" aria-expanded="false" aria-controls="rrMainNav">☰</button><nav id="rrMainNav"><a href="#trending">Discover</a><a href="#movies">Movies</a><a href="#series">TV Shows</a><a href="#theaters">In Theaters</a><a href="#upcoming-movies">Upcoming Movies</a><a href="#upcoming-series">Upcoming Series</a><a href="#news">News</a><a href="#gossip">Gossip</a><a href="#podcasts">Podcasts</a><a href="#kids">Kids & Family</a><a href="#watchlist">My Watchlist</a></nav><button type="button" class="rr-account-trigger" id="rrAccountOpen">Sign in / Join</button><input id="search" class="search" placeholder="Search movies & shows…" aria-label="Search movies and shows" /></div></header>
 <main id="top">
-<div class="rr-quick-nav" aria-label="Explore categories"><a href="#rr-movie-picks">🎬 Movies</a><a href="#rr-tv-picks">📺 TV Shows</a><a href="#rr-kdrama-picks">💗 K-Dramas</a><a href="#trending">🔥 Trending</a><a href="#kids">🌈 Kids & Family</a><a href="#watchlist">♡ Watchlist</a></div>
+<div class="rr-quick-nav rr-hide" aria-label="Explore categories"><a href="#rr-movie-picks">🎬 Movies</a><a href="#rr-tv-picks">📺 TV Shows</a><a href="#rr-kdrama-picks">💗 K-Dramas</a><a href="#trending">🔥 Trending</a><a href="#kids">🌈 Kids & Family</a><a href="#watchlist">♡ Watchlist</a></div>
 <section id="rrSearchResults" class="rr-search-results rr-hide" aria-live="polite"><div class="section-head"><h2>Search results</h2><button type="button" id="rrClearSearch" class="chip">Clear search ×</button></div><p id="rrSearchMessage" class="rr-home-note"></p><div id="rrSearchGrid" class="grid"></div></section>
 <section class="hero"><div class="hero-content"><div class="eyebrow">Your next favorite starts here</div><h1>Less scrolling.<br>More watching.</h1><p>Discover movies and series, check ratings, get the quick story, and find where to watch — all in one place.</p><a class="btn" href="#trending">Explore titles</a><a class="btn secondary" href="#updates">Latest updates</a></div></section>
-<div class="rr-home-tabs" aria-label="Explore ReelRadar sections"><a href="#trending">Trending</a><a href="#rr-movie-picks">Movies</a><a href="#rr-tv-picks">TV Shows</a><a href="#rr-kdrama-picks">K-Dramas</a><a href="#upcoming-movies">Upcoming</a><a href="#kids">Kids & Family</a><a href="#watchlist">My Watchlist</a></div>
-<section class="rr-home-section" id="rr-movie-picks"><div class="section-head"><h2>Movies to discover</h2><span class="small">Sample movie picks · live movie search above</span></div><div id="rrMoviePicks" class="grid"></div></section>
-<section class="rr-home-section" id="rr-tv-picks"><div class="section-head"><h2>TV shows</h2><span class="small">Live TVmaze series</span></div><div id="rrTvPicks" class="grid"><p class="empty">Loading series…</p></div></section>
-<section class="rr-home-section" id="rr-kdrama-picks"><div class="section-head"><h2>K-Dramas</h2><span class="small">Curated titles · matched to TVmaze</span></div><div id="rrKdramaPicks" class="grid"><p class="empty">Loading Korean series…</p></div></section>
-<div class="section-head" id="trending"><h2>Trending now</h2><div class="filters"><button class="chip active" data-filter="All">All</button><button class="chip" data-filter="Movie">Movies</button><button class="chip" data-filter="TV Series">TV series</button><button class="chip" data-filter="K-Drama">K-dramas</button></div></div>
+
+<div class="rr-global-nav" id="globalNav" aria-label="Explore global cinema"></div>
+<div id="rrGlobalDiscovery" aria-live="polite"><p class="rr-global-loading">Loading global movies and shows…</p></div>
+<div class="rr-home-tabs rr-hide" aria-label="Explore ReelRadar sections"><a href="#trending">Trending</a><a href="#rr-movie-picks">Movies</a><a href="#rr-tv-picks">TV Shows</a><a href="#rr-kdrama-picks">K-Dramas</a><a href="#upcoming-movies">Upcoming</a><a href="#kids">Kids & Family</a><a href="#watchlist">My Watchlist</a></div>
+<section class="rr-home-section rr-hide" id="rr-movie-picks"><div class="section-head"><h2>Movies to discover</h2><span class="small">Sample movie picks · live movie search above</span></div><div id="rrMoviePicks" class="grid"></div></section>
+<section class="rr-home-section rr-hide" id="rr-tv-picks"><div class="section-head"><h2>TV shows</h2><span class="small">Live TVmaze series</span></div><div id="rrTvPicks" class="grid"><p class="empty">Loading series…</p></div></section>
+<section class="rr-home-section rr-hide" id="rr-kdrama-picks"><div class="section-head"><h2>K-Dramas</h2><span class="small">Curated titles · matched to TVmaze</span></div><div id="rrKdramaPicks" class="grid"><p class="empty">Loading Korean series…</p></div></section>
+<div class="section-head" id="trending"><h2>Global discoveries</h2><div class="filters"><button class="chip active" data-filter="All">All</button><button class="chip" data-filter="Movie">Movies</button><button class="chip" data-filter="TV Series">TV series</button><button class="chip" data-filter="K-Drama">K-dramas</button></div></div>
 <div id="grid" class="grid"></div>
-<section id="kids" class="rr-home-section" aria-labelledby="kidsHeading"><div class="section-head"><h2 id="kidsHeading">Kids & Family</h2><span class="small">Curated discovery, not verified age classifications</span></div><div class="rr-home-controls"><label for="rrAge">Browse preference</label><select id="rrAge"><option value="all">All family categories</option><option value="preschool">Preschool</option><option value="animation">Animation</option><option value="educational">Educational shows</option><option value="family">Family movies</option><option value="teen">Teen shows</option></select><label><input type="checkbox" id="rrHideTeen"> Hide teen suggestions on this browser</label></div><p class="rr-home-note">These are editorial groupings, not official age ratings. Please review individual titles before children watch. The hide option is a local viewing preference, not a secure parental control or age verification system. No videos autoplay.</p><div class="rr-family-grid" id="rrFamilyGroups"><p class="empty">Loading family discovery…</p></div><p class="rr-home-note">TV series data: <a href="https://www.tvmaze.com" target="_blank" rel="noopener noreferrer">TVmaze</a>. Family movie examples are local demo records; posters and age classifications are not verified.</p></section>
+<section id="kids" class="rr-home-section" aria-labelledby="kidsHeading"><div class="section-head"><h2 id="kidsHeading">Kids & Family</h2><span class="small">Curated discovery, not verified age classifications</span></div><div class="rr-home-controls"><label for="rrAge">Browse preference</label><select id="rrAge"><option value="all">All family categories</option><option value="preschool">Preschool</option><option value="animation">Animation</option><option value="educational">Educational shows</option><option value="family">Family movies</option><option value="teen">Teen shows</option></select><label><input type="checkbox" id="rrHideTeen"> Hide teen suggestions on this browser</label></div><p class="rr-home-note">These are editorial groupings, not official age ratings. Please review individual titles before children watch. The hide option is a local viewing preference, not a secure parental control or age verification system. No videos autoplay.</p><div class="rr-family-grid" id="rrFamilyGroups"><p class="empty">Loading family discovery…</p></div><p class="rr-home-note">TV series data: <a href="https://www.tvmaze.com" target="_blank" rel="noopener noreferrer">TVmaze</a>. Family movie listings use live discovery data where available; age classifications are not verified.</p></section>
 <section id="watchlist"><div class="section-head"><h2>My Watchlist <span class="rr-saved-count" id="watchlistCount"></span></h2><span class="small">Sign in to sync across devices · local saves available as guest</span></div><div id="watchlistGrid" class="grid rr-saved-grid"></div><p id="watchlistEmpty" class="rr-saved-empty">Save a movie or show using the bookmark button to see it here.</p></section>
 <div class="section-head" id="movies"><h2>Movie discovery · AMODB + Wikidata</h2><span class="small">Search above for live results from multiple sources</span></div>
 <div id="movieStatus" class="small">Search movies using AMODB, TVmaze and Wikidata. Images and ratings from AMODB are for development until commercial rights are confirmed.</div>
@@ -73,30 +94,22 @@ main{max-width:1380px}.rr-quick-nav{display:flex;gap:10px;overflow-x:auto;scroll
 <div class="section-head" id="updates"><h2>Recently aired episodes</h2><span class="small">Recent TV schedule data from TVmaze</span></div>
 <div id="updatesList" class="feature-grid"><p class="empty">Loading recent episodes…</p></div>
 <div class="section-head" id="news"><h2>Entertainment news</h2><span class="small">Casting, renewals, trailers and release announcements</span></div>
-<div id="newsList" class="feature-grid"></div>
-<div class="notice">ReelRadar is a development prototype. Movie and TV search uses AMODB through a server-side endpoint, alongside Wikidata (CC0) film records and TVmaze series data. TVmaze data requires CC BY-SA attribution. Wikimedia Commons images are individually licensed and credited when available. AMODB metadata, ratings and TMDB-hosted poster rights have not been established for commercial use; verify permissions before monetizing. Theater showtimes, movie release calendars, entertainment news and streaming availability remain previews, not verified live listings. ReelRadar is independent and not affiliated with listed providers. Sources: <a href="https://www.wikidata.org" target="_blank" rel="noopener">Wikidata</a>, <a href="https://www.tvmaze.com" target="_blank" rel="noopener">TVmaze</a>.</div>
+<p class="rr-home-note">Latest linked headlines from publishers. Tap to read the original report.</p><div class="rr-ent-controls"><label for="rrEntRegion">Entertainment region</label><select id="rrEntRegion"><option value="global">Worldwide</option><option value="hollywood">Hollywood</option><option value="korea">Korea</option><option value="china">China</option><option value="japan">Japan</option><option value="india">India / Bollywood</option><option value="africa">Africa / Nollywood</option><option value="philippines">Philippines</option></select><button class="chip" id="rrEntRefresh" type="button">Refresh</button></div><div id="newsList" class="rr-ent-grid" aria-live="polite"><p class="empty">Loading entertainment news…</p></div>
+<section id="gossip" class="rr-home-section"><div class="section-head"><h2>Celebrity & Entertainment Buzz</h2><span class="small">Reported stories, interviews and entertainment chatter</span></div><p class="rr-home-note">Headlines link to their original publishers. Reports and rumors are not presented as verified facts.</p><div id="gossipList" class="rr-ent-grid" aria-live="polite"><p class="empty">Loading entertainment buzz…</p></div></section>
+<section id="podcasts" class="rr-home-section"><div class="section-head"><h2>International Entertainment Podcasts</h2><span class="small">Movie, drama, pop culture and streaming conversations</span></div><p class="rr-home-note">Discover podcasts from around the world and open them in a podcast app. Shows are not necessarily produced by streaming platforms.</p><div id="podcastsList" class="rr-ent-grid" aria-live="polite"><p class="empty">Loading podcasts…</p></div></section>
+<div class="notice">ReelRadar is a development prototype. Movie and TV search uses AMODB through a server-side endpoint, alongside Wikidata (CC0) film records and TVmaze series data. TVmaze data requires CC BY-SA attribution. Wikimedia Commons images are individually licensed and credited when available. AMODB metadata, ratings and TMDB-hosted poster rights have not been established for commercial use; verify permissions before monetizing. Theater showtimes, movie release calendars and entertainment headlines and podcasts are linked from third-party directories and publishers. Streaming-provider information is country-specific and should be confirmed with the provider. ReelRadar is independent and not affiliated with listed providers. Sources: <a href="https://www.wikidata.org" target="_blank" rel="noopener">Wikidata</a>, <a href="https://www.tvmaze.com" target="_blank" rel="noopener">TVmaze</a>.</div>
 <section class="notice" style="max-width:1200px;margin:0 auto;padding:15px 22px">Wikidata movie metadata is CC0. Wikimedia Commons files have separate licenses and attribution. AMODB search results may include ratings and images sourced from other providers; their appearance here does not establish commercial reuse rights.</section></main>
 <div id="modal" class="modal" role="dialog" aria-modal="true" aria-label="Title details"><div class="dialog"><button class="close" id="close" aria-label="Close">×</button><div class="rr-toolbar"><button type="button" id="rrExpand" class="rr-action" aria-pressed="false">⛶ Full screen</button><button type="button" id="rrSave" class="rr-action" aria-pressed="false">♡ Save to watchlist</button></div><div id="detail"></div></div></div>
 <script>
-const titles=[
-{id:1,title:'Dune: Part Two',year:2024,type:'Movie',genre:'Sci-Fi · Adventure',rating:'8.5',source:'TMDB sample',poster:'https://image.tmdb.org/t/p/w500/1pdfLvkbY9ohJlCjQH2CZjjYVvJ.jpg',synopsis:'Paul Atreides unites with Chani and the Fremen while seeking revenge against the conspirators who destroyed his family.',providers:['Check local streaming availability'],update:'Now available to discover'},
-{id:2,title:'Queen of Tears',year:2024,type:'K-Drama',genre:'Romance · Drama',rating:'8.2',source:'TMDB sample',poster:'https://image.tmdb.org/t/p/w500/tw2zT9x2P2P0Y8jQzKQ7n8o1Y3F.jpg',synopsis:'A married couple facing a crisis find their love tested in unexpected ways.',providers:['Netflix — verify by country'],update:'Popular Korean series'},
-{id:3,title:'Inside Out 2',year:2024,type:'Movie',genre:'Animation · Family',rating:'7.6',source:'TMDB sample',poster:'https://image.tmdb.org/t/p/w500/vpnVM9B6NMmQpWeZvzLvDESb2QY.jpg',synopsis:'Riley enters her teenage years as new emotions arrive at headquarters and change the team dynamic.',providers:['Disney+ — verify by country'],update:'Family pick'},
-{id:4,title:'The Last of Us',year:2023,type:'TV Series',genre:'Drama · Thriller',rating:'8.6',source:'TMDB sample',poster:'https://image.tmdb.org/t/p/w500/uKvVjHNqB5VmOrdxqAt2F7J78ED.jpg',synopsis:'A hardened survivor escorts a teenager across a dangerous post-apocalyptic America.',providers:['Max — verify by country'],update:'Series to catch up on'},
-{id:5,title:'Past Lives',year:2023,type:'Movie',genre:'Romance · Drama',rating:'7.9',source:'TMDB sample',poster:'https://image.tmdb.org/t/p/w500/k3waqVXSnvCZWfJYNtdamTgTtTA.jpg',synopsis:'Two childhood friends reconnect years later and reflect on love, distance, and the lives they might have lived.',providers:['Check local streaming availability'],update:'Critically acclaimed'},
-{id:6,title:'Moving',year:2023,type:'K-Drama',genre:'Action · Fantasy',rating:'8.5',source:'TMDB sample',poster:'https://image.tmdb.org/t/p/w500/5gQ2k8x4o9Y3s5c1f7r0n1b2a3.jpg',synopsis:'Teenagers with hidden superpowers and their parents face dangerous secrets from the past.',providers:['Disney+ — verify by country'],update:'K-drama recommendation'},
-{id:7,title:'The Bear',year:2022,type:'TV Series',genre:'Comedy · Drama',rating:'8.2',source:'TMDB sample',poster:'https://image.tmdb.org/t/p/w500/sHFlbKS3WLqMnp9t2ghADIJFnuQ.jpg',synopsis:'A talented chef returns to Chicago to run his family sandwich shop while navigating grief and a chaotic kitchen.',providers:['Check local streaming availability'],update:'Award-winning series'},
-{id:8,title:'Spider-Man: Across the Spider-Verse',year:2023,type:'Movie',genre:'Animation · Action',rating:'8.6',source:'TMDB sample',poster:'https://image.tmdb.org/t/p/w500/8Vt6mWEReuy4Of61Lnj5Xj704m8.jpg',synopsis:'Miles Morales travels across the multiverse and encounters a team of Spider-People protecting its existence.',providers:['Check local streaming availability'],update:'Fan favorite'},
-{id:9,title:'Business Proposal',year:2022,type:'K-Drama',genre:'Romance · Comedy',rating:'8.1',source:'TMDB sample',poster:'https://image.tmdb.org/t/p/w500/eDo0pNruy0Qgj6BdTyHIR4cxHY8.jpg',synopsis:'A blind date arranged to scare away a suitor becomes complicated when the date turns out to be her company CEO.',providers:['Netflix — verify by country'],update:'Rom-com pick'},
-{id:10,title:'Oppenheimer',year:2023,type:'Movie',genre:'Biography · Drama',rating:'8.3',source:'TMDB sample',poster:'https://image.tmdb.org/t/p/w500/ptpr0kGAckfQkJeJIt8st5dglvd.jpg',synopsis:'The story of J. Robert Oppenheimer and the scientific and moral stakes of developing the atomic bomb.',providers:['Check local streaming availability'],update:'Historical drama'}
-];
+// Live catalog is loaded from AMODB discovery; no hard-coded sample movie cards.
+const titles=[];
 const originalTitles=[...titles];let filter='All';const grid=document.getElementById('grid');const search=document.getElementById('search');
 // TVmaze public API integration: no API key required.
 const TVMAZE='https://api.tvmaze.com';
 let tvmazeTitles=[]; let searchTimer=null; let searchRequest=0;
 function fromTVmaze(show){return {id:1000000+show.id,tvmazeId:show.id,title:show.name,year:(show.premiered||'').slice(0,4)||'TBA',type:'TV Series',genre:(show.genres||[]).slice(0,2).join(' · ')||'TV Series',rating:show.rating&&show.rating.average!=null?Number(show.rating.average).toFixed(1):'N/A',source:'TVmaze',poster:show.image?(show.image.medium||show.image.original):'',synopsis:(show.summary||'No synopsis is available yet.').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim(),providers:['Check your local streaming services'],update:show.status?('Status: '+show.status):'TV series information from TVmaze'};}
 function mergeTVmaze(items){for(const item of items){const t=item.show?fromTVmaze(item.show):fromTVmaze(item);const idx=titles.findIndex(x=>x.title.toLowerCase()===t.title.toLowerCase()&&x.type!=='Movie');if(idx>=0){titles[idx]={...titles[idx],...t};}else if(!titles.some(x=>x.id===t.id)){titles.push(t);}}}
-async function loadTVmazeShows(){try{const response=await fetch(`${TVMAZE}/shows?page=0`);if(!response.ok)throw new Error('TVmaze request failed');const shows=await response.json();tvmazeTitles=shows.filter(x=>x.image).sort((a,b)=>(b.rating?.average||0)-(a.rating?.average||0)).slice(0,30).map(fromTVmaze);mergeTVmaze(tvmazeTitles);render();}catch(error){console.warn('TVmaze could not load. The sample titles will remain visible.',error);}}
+async function loadTVmazeShows(){try{const response=await fetch(`${TVMAZE}/shows?page=0`);if(!response.ok)throw new Error('TVmaze request failed');const shows=await response.json();tvmazeTitles=shows.filter(x=>x.image).sort((a,b)=>(b.rating?.average||0)-(a.rating?.average||0)).slice(0,30).map(fromTVmaze);mergeTVmaze(tvmazeTitles);if(!rrGlobalReady)render();}catch(error){console.warn('TVmaze could not load. The sample titles will remain visible.',error);}}
 async function searchTVmaze(query,requestId){try{const response=await fetch(`${TVMAZE}/search/shows?q=${encodeURIComponent(query)}`);if(!response.ok)throw new Error('TVmaze search failed');const results=await response.json();if(requestId!==searchRequest)return;return results.map(x=>fromTVmaze(x.show));}catch(error){console.warn('TVmaze search failed.',error);return [];}}
 function rrEscape(value){return String(value||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function rrDate(offset=0){const d=new Date();d.setDate(d.getDate()+offset);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
@@ -171,7 +184,7 @@ async function searchAMoDB(query,requestId){
 }
 function rrNormalizedTitle(v){return String(v||'').toLocaleLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g,' ').trim();}
 async function searchAll(query,requestId){
- const local=originalTitles.filter(t=>rrMatchesQuery(t,query));
+ const local=rrGlobalTitles.filter(t=>rrMatchesQuery(t,query));
  // Preserve all three providers: AMODB first, TVmaze for series, Wikidata for film facts.
  const [amodb,tv,wikidata]=await Promise.all([
   searchAMoDB(query,requestId),searchTVmaze(query,requestId),searchWikidataMovies(query,requestId)
@@ -313,9 +326,9 @@ document.getElementById('rrExpand').addEventListener('click',()=>{const modal=do
 rrRenderWatchlist();
 document.querySelectorAll('.chip[data-filter]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.chip[data-filter]').forEach(x=>x.classList.remove('active'));b.classList.add('active');filter=b.dataset.filter;render()}));search.addEventListener('input',()=>{
  clearTimeout(searchTimer);const query=search.value.trim();++searchRequest;
- if(query.length<2){movieStatus.textContent='Search movies and series using AMODB, TVmaze and Wikidata. Poster and rating rights require verification before commercial use.';titles.splice(0,titles.length,...originalTitles);mergeTVmaze(tvmazeTitles);render();return;}
+ if(query.length<2){movieStatus.textContent='Search movies and series using AMODB, TVmaze and Wikidata. Poster and rating rights require verification before commercial use.';titles.splice(0,titles.length,...rrGlobalTitles);render();return;}
  filter='All';document.querySelectorAll('.chip[data-filter]').forEach(b=>b.classList.toggle('active',b.dataset.filter==='All'));
- const local=originalTitles.filter(t=>rrMatchesQuery(t,query));
+ const local=rrGlobalTitles.filter(t=>rrMatchesQuery(t,query));
  titles.splice(0,titles.length,...local);render();rrSearchLoading(true);
  document.getElementById('rrSearchMessage').textContent=local.length?`Showing ${local.length} matching saved examples. Searching more titles…`:'Searching movies and TV shows…';
  if(local.length){const root=document.getElementById('rrSearchGrid');root.innerHTML=local.map(rrCardHtml).join('');rrWireCards(root,local);}
@@ -328,7 +341,7 @@ featureCards('theatersList', [['Find nearby cinemas','Choose a city or ZIP code 
 featureCards('upcomingMoviesList', [['Upcoming movie releases','Browse announced release dates, posters, trailers, cast and synopsis.','MOVIES'],['Release calendar','Filter upcoming films by month, genre and country.','CALENDAR'],['Release date alerts','A future feature for saving titles and tracking date changes.','COMING SOON']]);
 // TV schedule is populated live from TVmaze.
 // Recently aired episodes are populated live from TVmaze.
-featureCards('newsList', [['Casting and production','News about confirmed castings, directors, filming and production.','INDUSTRY'],['Trailers and first looks','New trailers, teasers, posters and official announcements.','TRAILERS'],['Renewals and cancellations','Updates on series renewals, cancellations and release delays.','TV NEWS']]);render();loadTVmazeShows();loadTVSchedules();
+render();loadTVmazeShows();loadTVSchedules();
 
 // Curated family discovery: exact-match allowlist, not a substitute for parental review.
 async function rrLoadKids(){
@@ -385,7 +398,104 @@ try{rrHideTeen.checked=localStorage.getItem('rr-hide-teen')==='yes'}catch(e){}
 rrAgeSelect.addEventListener('change',rrPaintFamily);
 rrHideTeen.addEventListener('change',()=>{try{localStorage.setItem('rr-hide-teen',rrHideTeen.checked?'yes':'no')}catch(e){}rrPaintFamily()});
 
-rrLoadHome();
+
+// Global Discovery uses a secure server-side AMODB discover endpoint.
+// Country/language grouping reflects API filters, not independently verified production credits.
+let rrGlobalReady=false;
+let rrGlobalTitles=[];
+const rrSeasonMap={
+  0:['Winter Movie Nights','Romance, drama and feel-good favorites','winter'],
+  1:["Valentine's Movie Nights",'Love stories from around the world','romance'],
+  2:['Spring Movie Nights','Family adventures and feel-good films','family'],
+  3:['Spring Movie Nights','Family adventures and feel-good films','family'],
+  4:['Family Movie Nights','Adventure and animation for shared viewing','family'],
+  5:['Summer Blockbusters','Action and adventure favorites','action'],
+  6:['Summer Blockbusters','Action and adventure favorites','action'],
+  7:['Summer Blockbusters','Action and adventure favorites','action'],
+  8:['Thriller Season','Mysteries and suspense','thriller'],
+  9:['Halloween Movie Nights','Horror, supernatural stories and spooky favorites','halloween'],
+  10:['Cozy Movie Nights','Drama, comedy and comfort watches','comedy'],
+  11:['Holiday Movie Nights','Family films, romance and winter favorites','holiday']
+};
+const rrGlobalGroups=[
+ ['korean','🇰🇷 Korean Movies & K-Dramas','Korean-language films and television'],
+ ['chinese','🇨🇳 Chinese Movies & C-Dramas','Mandarin-language films and television'],
+ ['japanese','🇯🇵 Japanese Movies & J-Dramas','Japanese-language films and television'],
+ ['filipino','🇵🇭 Philippine Movies & Series','Filipino-language entertainment'],
+ ['indian','🇮🇳 Indian Cinema & Bollywood','Hindi-language movies and series'],
+ ['african','🌍 African Cinema','Films associated with Nigeria, Kenya, Ghana and South Africa'],
+ ['hollywood','🎬 Hollywood & English-Language Cinema','English-language popular movies'],
+ ['asian','🌏 More Asian Cinema','Thai, Indonesian and other Asian films'],
+ ['classics','📼 1990s Classics','Movies released from 1990 through 1999'],
+ ['mature','🔞 Mature Themes','Thrillers and horror; ratings and suitability must be checked'],
+ ['kids','🧸 Kids & Family Movies','Family and animated titles; verify official age ratings'],
+ ['teens','🎒 Teen Movie Picks','Coming-of-age, romance and adventure; check content ratings']
+];
+function rrGlobalSection(id,title,desc,season=false){
+ const section=document.createElement('section');
+ section.id='rr-global-'+id;
+ section.className=season?'rr-season-spotlight':'rr-home-section';
+ section.innerHTML=`<div class="rr-global-head"><div><h2>${rrEscape(title)}</h2><p>${rrEscape(desc)}</p></div></div><div class="rr-global-grid" id="rr-global-grid-${id}"><p class="rr-global-loading">Loading titles…</p></div>`;
+ return section;
+}
+function rrGlobalFromApi(x){
+ if(!x||!Number.isFinite(Number(x.id))||!['movie','tv'].includes(x.media_type))return null;
+ const movie=x.media_type==='movie',year=(x.release_date||x.first_air_date||'').slice(0,4);
+ const votes=Number(x.vote_count),rating=Number(x.vote_average);
+ return {id:(movie?300000000:400000000)+Number(x.id),amodbId:Number(x.id),amodbType:x.media_type,
+ title:x.title||x.name||'Untitled',year:year||'TBA',type:movie?'Movie':'TV Series',
+ genre:(x.genre_ids||[]).map(g=>RR_GENRES[g]).filter(Boolean).slice(0,3).join(' · ')||(movie?'Movie':'TV Series'),
+ rating:votes>0&&Number.isFinite(rating)?rating.toFixed(1):'N/A',source:'AMODB',
+ poster:x.poster_path?'https://image.tmdb.org/t/p/w500'+x.poster_path:'',
+ synopsis:x.overview||'No synopsis is available yet.',providers:[],update:'Global discovery listing'};
+}
+async function rrLoadGlobalDiscovery(){
+ const root=document.getElementById('rrGlobalDiscovery');
+ const nav=document.getElementById('globalNav');
+ if(!root||!nav)return;
+ const season=rrSeasonMap[new Date().getMonth()];
+ const sections=[['season',season[0],season[1]],...rrGlobalGroups];
+ root.innerHTML='';
+ for(const [id,title,desc] of sections){root.appendChild(rrGlobalSection(id,title,desc,id==='season'));}
+ nav.innerHTML=sections.map(([id,title])=>`<a href="#rr-global-${id}">${rrEscape(title)}</a>`).join('');
+ // Keep load modest: the backend limits results and caches responses.
+ const jobs=sections.map(([id])=>({id,kind:id==='season'?season[2]:id}));
+ const all=[];
+ async function loadOne(job){
+  const panel=document.getElementById('rr-global-grid-'+job.id);
+  try{
+   const r=await fetch('/api/discover?category='+encodeURIComponent(job.kind));
+   if(!r.ok)throw new Error('Discover HTTP '+r.status);
+   const data=await r.json();
+   const seen=new Set();
+   const items=(data.results||[]).map(rrGlobalFromApi).filter(t=>{
+    if(!t||!t.poster||seen.has(rrTitleKey(t)))return false;
+    seen.add(rrTitleKey(t));return true;
+   }).slice(0,10);
+   if(!items.length){panel.innerHTML='<p class="empty">No titles available in this collection right now.</p>';return;}
+   // Keep the movie registry available to the existing details and watchlist handlers.
+   for(const t of items){if(!all.some(x=>rrTitleKey(x)===rrTitleKey(t)))all.push(t);}
+   panel.innerHTML=items.map(rrCardHtml).join('');
+   rrWireCards(panel,items);
+  }catch(e){console.warn('Global discovery unavailable:',job.kind,e);panel.innerHTML='<p class="empty">Could not load this collection. Try refreshing later.</p>';}
+ }
+ // Limit concurrent calls to avoid overloading serverless endpoints on mobile.
+ let cursor=0;
+ await Promise.all(Array.from({length:3},async()=>{
+  while(cursor<jobs.length){const job=jobs[cursor++];await loadOne(job);}
+ }));
+ rrGlobalTitles=all;
+ rrGlobalReady=true;
+ if(!search.value.trim()){
+  titles.splice(0,titles.length,...all);
+  render();
+ }
+ // Keep the existing Kids & Family browsing controls, now with live movie titles.
+ rrFamilyData.family=all.filter(x=>x.type==='Movie'&&x.genre.includes('Family')).slice(0,6);
+ rrPaintFamily();
+}
+
+rrLoadGlobalDiscovery();
 </script>
 
 <script>
@@ -450,4 +560,21 @@ const RR_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_J2NijroBpLo-jVzLL_LTWQ_a3tFz
  form.addEventListener('submit',async e=>{e.preventDefault();if(!client){setStatus('Connect your Supabase project first.');return;}const submit=document.getElementById('rrAuthSubmit');submit.disabled=true;setStatus('Please wait…');try{if(mode==='signup'){const name=username.value.trim();if(!/^[A-Za-z0-9_]{3,30}$/.test(name))throw Error('Username must be 3–30 letters, numbers or underscores.');const {data,error}=await client.auth.signUp({email:email.value.trim(),password:password.value,options:{data:{username:name},emailRedirectTo:location.origin+location.pathname}});if(error)throw error;if(data.session){setStatus('Account created!');close();}else setStatus('Check your email for a confirmation link, then sign in.');}else{const {error}=await client.auth.signInWithPassword({email:email.value.trim(),password:password.value});if(error)throw error;close();}}catch(err){setStatus(err.message||'Authentication failed.')}finally{password.value='';submit.disabled=false;}});
  if(client){client.auth.onAuthStateChange((_event,session)=>{setTimeout(()=>setUser(session?.user||null),0)});}else{setMode('signin');}
 })();
-</script></body></html>
+</script><script>
+(function(){
+ const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const valid=u=>{try{const x=new URL(u);return x.protocol==='https:'?x.href:''}catch{return ''}};
+ let run=0;
+ async function load(kind,region,token){
+  const box=document.getElementById(kind==='news'?'newsList':kind==='gossip'?'gossipList':'podcastsList');
+  box.innerHTML='<p class="empty">Loading '+kind+'…</p>';
+  try{
+   const r=await fetch('/api/entertainment?'+new URLSearchParams({kind,region}));if(!r.ok)throw Error('Feed unavailable');const data=await r.json();if(token!==run)return;
+   box.innerHTML=(data.items||[]).map(x=>{const url=valid(x.url);if(!url)return '';const date=x.date?new Date(x.date):null;const when=date&&!isNaN(date)?date.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}):'';return '<a class="rr-ent-card" href="'+esc(url)+'" target="_blank" rel="noopener noreferrer">'+(kind==='podcasts'&&valid(x.image)?'<img loading="lazy" alt="" src="'+esc(valid(x.image))+'">':'')+'<span class="feature-label">'+(kind==='podcasts'?'PODCAST':kind==='gossip'?'ENTERTAINMENT BUZZ':'NEWS')+'</span><h3>'+esc(x.title)+'</h3><div class="meta">'+esc(x.source||'Publisher')+(when?' · '+esc(when):'')+'</div><span class="rr-ent-link">'+(kind==='podcasts'?'Open podcast ↗':'Read original article ↗')+'</span></a>'}).join('')||'<p class="empty">No recent results for this region. Try Worldwide.</p>';
+  }catch(e){if(token===run)box.innerHTML='<p class="empty">This feed is temporarily unavailable. Try Refresh or another region.</p>'}
+ }
+ function refresh(){const token=++run;const region=document.getElementById('rrEntRegion').value;['news','gossip','podcasts'].forEach(kind=>load(kind,region,token));}
+ document.getElementById('rrEntRegion')?.addEventListener('change',refresh);document.getElementById('rrEntRefresh')?.addEventListener('click',refresh);refresh();
+})();
+</script>
+</body></html>
