@@ -152,7 +152,7 @@ const originalTitles=[...titles];let filter='All';const grid=document.getElement
 // TVmaze public API integration: no API key required.
 const TVMAZE='https://api.tvmaze.com';
 let tvmazeTitles=[]; let searchTimer=null; let searchRequest=0;
-function fromTVmaze(show){return {id:1000000+show.id,tvmazeId:show.id,title:show.name,year:(show.premiered||'').slice(0,4)||'TBA',type:'TV Series',genre:(show.genres||[]).slice(0,2).join(' · ')||'TV Series',rating:show.rating&&show.rating.average!=null?Number(show.rating.average).toFixed(1):'N/A',source:'TVmaze',poster:show.image?(show.image.medium||show.image.original):'',synopsis:(show.summary||'No synopsis is available yet.').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim(),providers:['Check your local streaming services'],update:show.status?('Status: '+show.status):'TV series information from TVmaze'};}
+function fromTVmaze(show){return {id:1000000+show.id,tvmazeId:show.id,title:show.name,year:(show.premiered||'').slice(0,4)||'TBA',type:'TV Series',genre:(show.genres||[]).slice(0,2).join(' · ')||'TV Series',rating:show.rating&&show.rating.average!=null?Number(show.rating.average).toFixed(1):'N/A',source:'TVmaze',language:show.language||'',country:show.network?.country?.code||show.webChannel?.country?.code||'',poster:show.image?(show.image.medium||show.image.original):'',synopsis:(show.summary||'No synopsis is available yet.').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim(),providers:['Check your local streaming services'],update:show.status?('Status: '+show.status):'TV series information from TVmaze'};}
 function mergeTVmaze(items){for(const item of items){const t=item.show?fromTVmaze(item.show):fromTVmaze(item);const idx=titles.findIndex(x=>x.title.toLowerCase()===t.title.toLowerCase()&&x.type!=='Movie');if(idx>=0){titles[idx]={...titles[idx],...t};}else if(!titles.some(x=>x.id===t.id)){titles.push(t);}}}
 async function loadTVmazeShows(){try{const response=await fetch(`${TVMAZE}/shows?page=0`);if(!response.ok)throw new Error('TVmaze request failed');const shows=await response.json();tvmazeTitles=shows.filter(x=>x.image).sort((a,b)=>(b.rating?.average||0)-(a.rating?.average||0)).slice(0,30).map(fromTVmaze);mergeTVmaze(tvmazeTitles);if(!rrGlobalReady)render();}catch(error){console.warn('TVmaze could not load. The sample titles will remain visible.',error);}}
 async function searchTVmaze(query,requestId){try{const response=await fetch(`${TVMAZE}/search/shows?q=${encodeURIComponent(query)}`);if(!response.ok)throw new Error('TVmaze search failed');const results=await response.json();if(requestId!==searchRequest)return;return results.map(x=>fromTVmaze(x.show));}catch(error){console.warn('TVmaze search failed.',error);return [];}}
@@ -220,7 +220,7 @@ async function searchAMoDB(query,requestId){
      year:release.slice(0,4)||'TBA',type:isMovie?'Movie':'TV Series',
      genre:(x.genre_ids||[]).map(id=>RR_GENRES[id]).filter(Boolean).slice(0,3).join(' · ')||(isMovie?'Movie':'TV Series'),
      rating:votes>0&&Number.isFinite(rating)?rating.toFixed(1):'N/A',
-     source:'AMODB',poster:x.poster_path?'https://image.tmdb.org/t/p/w500'+x.poster_path:'',
+     source:'AMODB',language:x.original_language||'',country:(x.origin_country||[])[0]||'',poster:x.poster_path?'https://image.tmdb.org/t/p/w500'+x.poster_path:'',
      synopsis:x.overview||'No synopsis is available yet.',
      providers:['Check local streaming availability'],update:'Movie and TV discovery information'
     };
@@ -328,8 +328,8 @@ async function loadShowExtras(show){
     const selected=Number(selector.value);
     const list=episodes.filter(ep=>ep.season===selected).sort((a,b)=>(a.number||0)-(b.number||0)).slice(0,120);
     const episodeHtml=ep=>{
-     const name=rrEscape(ep.name||'Untitled episode');
-     const image=ep.image?.original||ep.image?.medium||'';
+     const name=rrEscape(ep.name&& !/^episode\s*\d+$/i.test(ep.name)?ep.name:`Episode ${ep.number||''}`.trim());
+     const image=ep.image?.original||ep.image?.medium||show.backdrop||show.poster||'';
      const summary=String(ep.summary||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
      const description=summary?`<p class="rr-episode-summary">${rrEscape(summary.length>200?summary.slice(0,200).trimEnd()+'…':summary)}</p>${summary.length>200?`<details class="rr-episode-more"><summary>Read more</summary><p>${rrEscape(summary)}</p></details>`:''}`:'<p class="small">Episode description not available.</p>';
      return `<article class="rr-episode rr-episode-card"><div class="rr-episode-thumb">${image?`<img loading="lazy" src="${rrEscape(image)}" alt="${name} episode still" onerror="this.style.display='none';this.nextElementSibling.hidden=false"><span class="rr-episode-fallback" hidden>🎬<small>Episode image unavailable</small></span>`:'<span class="rr-episode-fallback">🎬<small>Episode image unavailable</small></span>'}</div><div class="rr-episode-content"><strong>${ep.number?'E'+Number(ep.number)+' · ':''}${name}</strong><span class="small">${rrEscape(ep.airdate||'Release date TBA')}</span>${description}</div></article>`;
@@ -439,12 +439,18 @@ function rrDetailSuggestions(t){
   const name=rrNormalizedTitle(x.title);
   const overlap=name.split(' ').filter(w=>w.length>3&&targetName.split(' ').includes(w)).length;
   const year=Number(x.year)||0;
-  const score=shared*25+overlap*2+(targetYear&&year&&Math.abs(year-targetYear)<=5?3:0)+(x.poster?2:0);
-  return {x,score,shared};
+  const region=v=>{const lang=String(v.language||'').toLowerCase(),country=String(v.country||'').toUpperCase(),g=String(v.genre||'').toLowerCase();return country==='KR'||lang==='korean'||/k-drama|korean/.test(g)?'KR':country==='JP'||lang==='japanese'?'JP':country==='CN'||lang==='chinese'?'CN':country==='IN'||lang==='hindi'?'IN':country||lang||'';};
+  const targetRegion=region(t),otherRegion=region(x);
+  const regionMatch=targetRegion&&otherRegion&&targetRegion===otherRegion;
+  const regionConflict=targetRegion&&otherRegion&&targetRegion!==otherRegion;
+  const strongGenres=['romance','comedy','family','mystery','thriller','fantasy','action','crime','animation'];
+  const distinctive=genreTokens(x).filter(g=>targetGenres.includes(g)&&strongGenres.includes(g)).length;
+  const score=shared*12+distinctive*35+(regionMatch?65:0)-(regionConflict?80:0)+(targetYear&&year&&Math.abs(year-targetYear)<=5?3:0)+(x.poster?2:0);
+  return {x,score,shared,regionConflict};
  }).filter(Boolean);
  // Require meaningful genre overlap; don't suggest unrelated shows merely because their titles contain the same word.
- const matches=scored.filter(v=>v.shared>0).sort((a,b)=>b.score-a.score).slice(0,8).map(v=>v.x);
- return `<section class="rr-detail-block"><h3>More like this</h3>${matches.length?`<div class="rr-recommend-grid">${matches.map(x=>`<button class="rr-recommend-card" type="button" data-suggest-key="${rrEscape(rrTitleKey(x))}">${x.poster?`<img loading="lazy" src="${rrEscape(x.poster)}" alt="${rrEscape(x.title)} poster">`:'<span class="rr-recommend-placeholder">🎬</span>'}<strong>${rrEscape(x.title)}</strong><small>${rrEscape(x.year)} · ${rrEscape(x.genre||x.type)}</small></button>`).join('')}</div><p class="rr-detail-note">Suggested from shared genres and nearby release years in the currently loaded catalog.</p>`:'<p class="rr-detail-note">No closely related titles are available in the loaded catalog yet.</p>'}</section>`;
+ const matches=scored.filter(v=>v.shared>0&&!v.regionConflict&&v.score>=20).sort((a,b)=>b.score-a.score).slice(0,8).map(v=>v.x);
+ return `<section class="rr-detail-block"><h3>More like this</h3>${matches.length?`<div class="rr-recommend-grid">${matches.map(x=>`<button class="rr-recommend-card" type="button" data-suggest-key="${rrEscape(rrTitleKey(x))}">${x.poster?`<img loading="lazy" src="${rrEscape(x.poster)}" alt="${rrEscape(x.title)} poster">`:'<span class="rr-recommend-placeholder">🎬</span>'}<strong>${rrEscape(x.title)}</strong><small>${rrEscape(x.year)} · ${rrEscape(x.genre||x.type)}</small></button>`).join('')}</div><p class="rr-detail-note">Suggestions prioritize matching genres, language or country when known, and release years. Availability depends on loaded titles.</p>`:'<p class="rr-detail-note">No closely related titles are available in the loaded catalog yet.</p>'}</section>`;
 }
 
 async function rrFindTVmazeDetail(t){
