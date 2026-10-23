@@ -324,21 +324,30 @@ function rrWatchFallback(title){
 }
 async function rrFindProviderId(title){
  if(title.amodbId&&['movie','tv'].includes(title.amodbType))return {id:title.amodbId,type:title.amodbType};
+ const wantedType=title.type==='Movie'?'movie':'tv';
+ const normalize=value=>String(value||'').normalize('NFKD').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+ const wantedName=normalize(title.title);
+ const wantedYear=/^\d{4}$/.test(String(title.year))?String(title.year):'';
  try{
   const controller=new AbortController();
-  const timer=setTimeout(()=>controller.abort(),7000);
+  const timer=setTimeout(()=>controller.abort(),9000);
   let response;
   try{response=await fetch('/api/movies?query='+encodeURIComponent(title.title),{signal:controller.signal});}
   finally{clearTimeout(timer);}
   if(!response.ok)return null;
   const data=await response.json();
-  const norm=x=>String(x||'').toLowerCase().replace(/[^a-z0-9]/g,'');
-  const matches=(data.results||[]).filter(x=>norm(x.title||x.name)===norm(title.title)&&['movie','tv'].includes(x.media_type));
-  const type=title.type==='Movie'?'movie':title.type==='TV Show'?'tv':null;
-  const candidate=matches.find(x=>x.media_type===type&&String(x.release_date||x.first_air_date||'').slice(0,4)===String(title.year))||
-                  matches.find(x=>x.media_type===type)||matches[0];
-  return candidate?{id:candidate.id,type:candidate.media_type}:null;
- }catch{return null;}
+  const matches=(Array.isArray(data.results)?data.results:[]).filter(x=>
+   x&&x.media_type===wantedType&&Number.isSafeInteger(Number(x.id))&&Number(x.id)>0&&
+   normalize(x.title||x.name)===wantedName
+  );
+  if(!matches.length)return null;
+  const yearOf=x=>String(x.release_date||x.first_air_date||'').slice(0,4);
+  // Never select a film for a TV series (or vice versa). Prefer the same premiere year.
+  const candidate=(wantedYear&&matches.find(x=>yearOf(x)===wantedYear))||
+   (matches.length===1&&(!wantedYear||!yearOf(matches[0])))&&matches[0]||
+   (!wantedYear&&matches.length===1?matches[0]:null);
+  return candidate?{id:Number(candidate.id),type:wantedType}:null;
+ }catch(error){console.warn('Could not match streaming title',error);return null;}
 }
 async function rrLoadProviders(title,requestId){
  const target=document.getElementById('rrProviderResults');
