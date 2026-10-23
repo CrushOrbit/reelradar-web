@@ -1,8 +1,9 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>ReelRadar — Find your next watch</title>
 <style>
 :root{--bg:#0b0b10;--panel:#15151e;--muted:#a5a5b4;--text:#f7f7fb;--accent:#ff365d;--line:#292936}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}header{position:sticky;top:0;z-index:5;background:rgba(11,11,16,.93);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}.nav{max-width:1200px;margin:auto;padding:16px 22px;display:flex;align-items:center;gap:24px}.logo{font-size:22px;font-weight:900;letter-spacing:-.7px;white-space:nowrap}.logo span{color:var(--accent)}nav{display:flex;gap:18px}nav a{color:#d9d9e2;text-decoration:none;font-size:14px}nav a:hover{color:white}.search{margin-left:auto;max-width:300px;width:100%;background:#1a1a24;border:1px solid #333342;color:white;padding:11px 14px;border-radius:10px;outline:none}.search:focus{border-color:var(--accent)}main{max-width:1200px;margin:auto;padding:26px 22px 60px}.hero{min-height:310px;border-radius:20px;overflow:hidden;position:relative;display:flex;align-items:end;padding:34px;background:linear-gradient(90deg,rgba(10,10,16,.98),rgba(10,10,16,.74) 48%,rgba(10,10,16,.1)),linear-gradient(0deg,rgba(10,10,16,.8),transparent),url('https://image.tmdb.org/t/p/w1280/8b8R8l88Qje9dn9OE8PY05Nxl1X.jpg') center 35%/cover,#242433}.hero-content{max-width:560px}.eyebrow{color:#ff8aa0;font-size:12px;text-transform:uppercase;letter-spacing:2px;font-weight:800}.hero h1{font-size:clamp(30px,5vw,52px);line-height:1.02;margin:10px 0}.hero p{color:#dedee7;line-height:1.55;max-width:500px}.btn{display:inline-block;background:var(--accent);color:white;text-decoration:none;border:0;border-radius:9px;padding:11px 16px;font-weight:800;cursor:pointer}.btn.secondary{background:#ffffff18;border:1px solid #ffffff3a;margin-left:8px}.section-head{display:flex;align-items:center;justify-content:space-between;margin:32px 0 15px;gap:14px}.section-head h2{font-size:22px;margin:0}.filters{display:flex;gap:8px;flex-wrap:wrap}.chip{border:1px solid #343442;color:#d4d4df;background:transparent;border-radius:999px;padding:7px 12px;cursor:pointer;font-size:12px}.chip.active,.chip:hover{background:#29202a;border-color:var(--accent);color:white}.grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:18px}.card{min-width:0;cursor:pointer}.poster{position:relative;aspect-ratio:2/3;background:#222230;border-radius:12px;overflow:hidden;border:1px solid #2a2a36}.poster img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .25s}.card:hover .poster img{transform:scale(1.04)}.rating{position:absolute;left:8px;top:8px;background:#101017e8;border:1px solid #ffffff25;border-radius:7px;padding:5px 7px;font-size:12px;font-weight:800}.card h3{font-size:14px;margin:10px 0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.meta{color:var(--muted);font-size:12px}.tag{display:inline-block;color:#ffb7c4;background:#ff365d1c;padding:4px 7px;border-radius:5px;font-size:10px;margin-top:7px}.empty{color:var(--muted);padding:28px 0}.feature-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.feature-card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:17px;min-height:120px}.feature-card h3{margin:0 0 8px;font-size:16px}.feature-card p{margin:0;color:var(--muted);font-size:13px;line-height:1.55}.feature-label{display:inline-block;color:#ffb7c4;background:#ff365d1c;padding:4px 7px;border-radius:5px;font-size:10px;margin-bottom:9px}.notice{border-top:1px solid var(--line);margin-top:40px;padding-top:20px;color:#858594;font-size:12px;line-height:1.6}.modal{display:none;position:fixed;inset:0;z-index:20;background:#000b;align-items:center;justify-content:center;padding:18px}.modal.open{display:flex}.dialog{max-width:780px;width:100%;max-height:90vh;overflow:auto;background:#171720;border:1px solid #343442;border-radius:18px;padding:22px;position:relative}.close{float:right;background:none;border:0;color:white;font-size:25px;cursor:pointer}.detail{display:grid;grid-template-columns:190px 1fr;gap:22px;margin-top:12px}.detail img{width:100%;border-radius:10px}.detail h2{margin:0 0 8px;font-size:28px}.detail p{color:#d0d0da;line-height:1.6}.provider{display:inline-block;background:#262633;border:1px solid #3a3a49;border-radius:7px;padding:8px 10px;margin:4px 5px 0 0;color:#eee;font-size:12px}.small{font-size:11px;color:var(--muted)}@media(max-width:850px){.grid{grid-template-columns:repeat(3,minmax(0,1fr))}nav{display:none}.hero{min-height:280px;padding:24px}.search{max-width:220px}}@media(max-width:520px){.nav{gap:12px;padding:13px}.logo{font-size:19px}.search{min-width:0;padding:10px;font-size:12px}main{padding:18px 14px 45px}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.hero{min-height:330px;padding:20px}.hero p{font-size:14px}.section-head{align-items:flex-start;flex-direction:column}.detail{grid-template-columns:110px 1fr;gap:14px}.detail h2{font-size:21px}.dialog{padding:16px}}
@@ -66,41 +67,47 @@ main{max-width:1380px}.rr-quick-nav{display:flex;gap:10px;overflow-x:auto;scroll
 .rr-ent-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:15px 0}.rr-ent-controls select{background:#20202b;color:white;border:1px solid #454554;border-radius:9px;padding:10px}.rr-ent-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}.rr-ent-card{display:flex;flex-direction:column;gap:9px;background:#171823;border:1px solid #383848;border-radius:14px;padding:16px;color:#f7f7fb;text-decoration:none;min-width:0}.rr-ent-card:hover{border-color:#ff365d}.rr-ent-card h3{font-size:15px;line-height:1.4;margin:0}.rr-ent-card .meta{line-height:1.5}.rr-ent-card img{height:85px;width:85px;border-radius:12px;object-fit:cover}.rr-ent-card .rr-ent-link{color:#ff9db2;font-size:12px;font-weight:700}
 .rr-theater-tools{margin:14px 0 18px;padding:17px;border:1px solid #393747;border-radius:14px;background:#171823}.rr-theater-tools label{display:block;font-weight:700;margin-bottom:10px}.rr-theater-search{display:flex;flex-wrap:wrap;gap:10px}.rr-theater-search input{flex:1;min-width:170px;background:#0e0e17;border:1px solid #555568;border-radius:9px;padding:12px;color:white;font:inherit}.rr-theater-fallback{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}.rr-theater-fallback .feature-card{min-width:0}
 </style>
-</head>
+<style>
+/* ReelRadar page-style navigation: one visible section at a time */
+.rr-page{display:none;min-height:45vh}.rr-page.rr-page-active{display:block}
+.nav nav a.rr-nav-active{color:#fff;border-bottom:2px solid var(--accent);padding-bottom:5px}
+.rr-page-title{font-size:clamp(27px,4vw,40px);letter-spacing:-1px;margin:6px 0 20px}
+.rr-page[data-rr-page="series"] .rr-home-section{display:block!important}
+@media(max-width:1050px){.nav nav.rr-nav-open{max-height:65vh;overflow-y:auto}}
+</style></head>
 <body>
-<header><div class="nav"><a class="rr-brand" href="#top" aria-label="ReelRadar home"><div class="logo">Reel<span>Radar</span></div></a><button id="rrMenuToggle" class="rr-menu-toggle" aria-label="Open navigation" aria-expanded="false" aria-controls="rrMainNav">☰</button><nav id="rrMainNav"><a href="#trending">Discover</a><a href="#movies">Movies</a><a href="#series">TV Shows</a><a href="#theaters">In Theaters</a><a href="#upcoming-movies">Upcoming Movies</a><a href="#upcoming-series">Upcoming Series</a><a href="#news">News</a><a href="#gossip">Gossip</a><a href="#podcasts">Podcasts</a><a href="#kids">Kids & Family</a><a href="#watchlist">My Watchlist</a></nav><button type="button" class="rr-account-trigger" id="rrAccountOpen">Sign in / Join</button><input id="search" class="search" placeholder="Search movies & shows…" aria-label="Search movies and shows" /></div></header>
+<header><div class="nav"><a aria-label="ReelRadar home" class="rr-brand" href="#top"><div class="logo">Reel<span>Radar</span></div></a><button aria-controls="rrMainNav" aria-expanded="false" aria-label="Open navigation" class="rr-menu-toggle" id="rrMenuToggle">☰</button><nav id="rrMainNav"><a href="#trending">Discover</a><a href="#movies">Movies</a><a href="#series">TV Shows</a><a href="#theaters">In Theaters</a><a href="#upcoming-movies">Upcoming Movies</a><a href="#upcoming-series">Upcoming Series</a><a href="#news">News</a><a href="#gossip">Gossip</a><a href="#podcasts">Podcasts</a><a href="#kids">Kids &amp; Family</a><a href="#watchlist">My Watchlist</a></nav><button class="rr-account-trigger" id="rrAccountOpen" type="button">Sign in / Join</button><input aria-label="Search movies and shows" class="search" id="search" placeholder="Search movies &amp; shows…"/></div></header>
 <main id="top">
-<div class="rr-quick-nav rr-hide" aria-label="Explore categories"><a href="#rr-movie-picks">🎬 Movies</a><a href="#rr-tv-picks">📺 TV Shows</a><a href="#rr-kdrama-picks">💗 K-Dramas</a><a href="#trending">🔥 Trending</a><a href="#kids">🌈 Kids & Family</a><a href="#watchlist">♡ Watchlist</a></div>
-<section id="rrSearchResults" class="rr-search-results rr-hide" aria-live="polite"><div class="section-head"><h2>Search results</h2><button type="button" id="rrClearSearch" class="chip">Clear search ×</button></div><p id="rrSearchMessage" class="rr-home-note"></p><div id="rrSearchGrid" class="grid"></div></section>
-<section class="hero"><div class="hero-content"><div class="eyebrow">Your next favorite starts here</div><h1>Less scrolling.<br>More watching.</h1><p>Discover movies and series, check ratings, get the quick story, and find where to watch — all in one place.</p><a class="btn" href="#trending">Explore titles</a><a class="btn secondary" href="#updates">Latest updates</a></div></section>
+<div class="rr-page" data-rr-page="home"><div aria-label="Explore categories" class="rr-quick-nav rr-hide"><a href="#rr-movie-picks">🎬 Movies</a><a href="#rr-tv-picks">📺 TV Shows</a><a href="#rr-kdrama-picks">💗 K-Dramas</a><a href="#trending">🔥 Trending</a><a href="#kids">🌈 Kids &amp; Family</a><a href="#watchlist">♡ Watchlist</a></div><section aria-live="polite" class="rr-search-results rr-hide" id="rrSearchResults"><div class="section-head"><h2>Search results</h2><button class="chip" id="rrClearSearch" type="button">Clear search ×</button></div><p class="rr-home-note" id="rrSearchMessage"></p><div class="grid" id="rrSearchGrid"></div></section><section class="hero"><div class="hero-content"><div class="eyebrow">Your next favorite starts here</div><h1>Less scrolling.<br/>More watching.</h1><p>Discover movies and series, check ratings, get the quick story, and find where to watch — all in one place.</p><a class="btn" href="#trending">Explore titles</a><a class="btn secondary" href="#updates">Latest updates</a></div></section><div aria-label="Explore global cinema" class="rr-global-nav" id="globalNav"></div><div aria-live="polite" id="rrGlobalDiscovery"><p class="rr-global-loading">Loading global movies and shows…</p></div><div aria-label="Explore ReelRadar sections" class="rr-home-tabs rr-hide"><a href="#trending">Trending</a><a href="#rr-movie-picks">Movies</a><a href="#rr-tv-picks">TV Shows</a><a href="#rr-kdrama-picks">K-Dramas</a><a href="#upcoming-movies">Upcoming</a><a href="#kids">Kids &amp; Family</a><a href="#watchlist">My Watchlist</a></div><section class="rr-home-section rr-hide" id="rr-movie-picks"><div class="section-head"><h2>Movies to discover</h2><span class="small">Sample movie picks · live movie search above</span></div><div class="grid" id="rrMoviePicks"></div></section><div class="section-head" id="trending"><h2>Global discoveries</h2><div class="filters"><button class="chip active" data-filter="All">All</button><button class="chip" data-filter="Movie">Movies</button><button class="chip" data-filter="TV Series">TV series</button><button class="chip" data-filter="K-Drama">K-dramas</button></div></div></div>
 
-<div class="rr-global-nav" id="globalNav" aria-label="Explore global cinema"></div>
-<div id="rrGlobalDiscovery" aria-live="polite"><p class="rr-global-loading">Loading global movies and shows…</p></div>
-<div class="rr-home-tabs rr-hide" aria-label="Explore ReelRadar sections"><a href="#trending">Trending</a><a href="#rr-movie-picks">Movies</a><a href="#rr-tv-picks">TV Shows</a><a href="#rr-kdrama-picks">K-Dramas</a><a href="#upcoming-movies">Upcoming</a><a href="#kids">Kids & Family</a><a href="#watchlist">My Watchlist</a></div>
-<section class="rr-home-section rr-hide" id="rr-movie-picks"><div class="section-head"><h2>Movies to discover</h2><span class="small">Sample movie picks · live movie search above</span></div><div id="rrMoviePicks" class="grid"></div></section>
-<section class="rr-home-section rr-hide" id="rr-tv-picks"><div class="section-head"><h2>TV shows</h2><span class="small">Live TVmaze series</span></div><div id="rrTvPicks" class="grid"><p class="empty">Loading series…</p></div></section>
-<section class="rr-home-section rr-hide" id="rr-kdrama-picks"><div class="section-head"><h2>K-Dramas</h2><span class="small">Curated titles · matched to TVmaze</span></div><div id="rrKdramaPicks" class="grid"><p class="empty">Loading Korean series…</p></div></section>
-<div class="section-head" id="trending"><h2>Global discoveries</h2><div class="filters"><button class="chip active" data-filter="All">All</button><button class="chip" data-filter="Movie">Movies</button><button class="chip" data-filter="TV Series">TV series</button><button class="chip" data-filter="K-Drama">K-dramas</button></div></div>
-<div id="grid" class="grid"></div>
-<section id="kids" class="rr-home-section" aria-labelledby="kidsHeading"><div class="section-head"><h2 id="kidsHeading">Kids & Family</h2><span class="small">Curated discovery, not verified age classifications</span></div><div class="rr-home-controls"><label for="rrAge">Browse preference</label><select id="rrAge"><option value="all">All family categories</option><option value="preschool">Preschool</option><option value="animation">Animation</option><option value="educational">Educational shows</option><option value="family">Family movies</option><option value="teen">Teen shows</option></select><label><input type="checkbox" id="rrHideTeen"> Hide teen suggestions on this browser</label></div><p class="rr-home-note">These are editorial groupings, not official age ratings. Please review individual titles before children watch. The hide option is a local viewing preference, not a secure parental control or age verification system. No videos autoplay.</p><div class="rr-family-grid" id="rrFamilyGroups"><p class="empty">Loading family discovery…</p></div><p class="rr-home-note">TV series data: <a href="https://www.tvmaze.com" target="_blank" rel="noopener noreferrer">TVmaze</a>. Family movie listings use live discovery data where available; age classifications are not verified.</p></section>
-<section id="watchlist"><div class="section-head"><h2>My Watchlist <span class="rr-saved-count" id="watchlistCount"></span></h2><span class="small">Sign in to sync across devices · local saves available as guest</span></div><div id="watchlistGrid" class="grid rr-saved-grid"></div><p id="watchlistEmpty" class="rr-saved-empty">Save a movie or show using the bookmark button to see it here.</p></section>
-<div class="section-head" id="movies"><h2>Movie discovery · AMODB + Wikidata</h2><span class="small">Search above for live results from multiple sources</span></div>
-<div id="movieStatus" class="small">Search movies using AMODB, TVmaze and Wikidata. Images and ratings from AMODB are for development until commercial rights are confirmed.</div>
-<div class="section-head" id="theaters"><h2>Now in theaters</h2><span class="small">Find films playing on the big screen</span></div>
-<div class="rr-theater-tools"><label for="rrCinemaZip">Find cinemas by city or ZIP</label><div class="rr-theater-search"><input id="rrCinemaZip" placeholder="e.g. Riverside, CA or 92501" autocomplete="postal-code"><button type="button" class="btn" id="rrFindCinema">Find cinemas ↗</button></div><p class="small">Movie listings depend on live catalog availability. Check the cinema for confirmed showtimes and tickets.</p></div><div id="theatersList" class="grid" aria-live="polite"><p class="empty">Checking current theatrical releases…</p></div><p id="rrTheaterStatus" class="rr-home-note"></p>
-<div class="section-head" id="upcoming-movies"><h2>Upcoming movies</h2><span class="small">Theatrical and streaming releases</span></div>
-<div id="upcomingMoviesList" class="rr-global-grid"><p class="empty">Loading upcoming films…</p></div>
-<div class="section-head" id="upcoming-series"><h2>Upcoming series & episodes</h2><span class="small">Scheduled premieres and episodes · TVmaze</span></div><div id="rrUpcomingSeries" class="feature-grid"><p class="empty">Loading upcoming episodes…</p></div><div class="section-head"><h2>TV schedule today</h2></div>
-<div id="upcomingSeriesList" class="feature-grid"><p class="empty">Loading today’s TV schedule…</p></div>
-<div class="section-head" id="updates"><h2>Recently aired episodes</h2><span class="small">Recent TV schedule data from TVmaze</span></div>
-<div id="updatesList" class="feature-grid"><p class="empty">Loading recent episodes…</p></div>
-<div class="section-head" id="news"><h2>Entertainment news</h2><span class="small">Casting, renewals, trailers and release announcements</span></div>
-<p class="rr-home-note">Latest linked headlines from publishers. Tap to read the original report.</p><div class="rr-ent-controls"><label for="rrEntRegion">Entertainment region</label><select id="rrEntRegion"><option value="global">Worldwide</option><option value="hollywood">Hollywood</option><option value="korea">Korea</option><option value="china">China</option><option value="japan">Japan</option><option value="india">India / Bollywood</option><option value="africa">Africa / Nollywood</option><option value="philippines">Philippines</option></select><button class="chip" id="rrEntRefresh" type="button">Refresh</button></div><div id="newsList" class="rr-ent-grid" aria-live="polite"><p class="empty">Loading entertainment news…</p></div>
-<section id="gossip" class="rr-home-section"><div class="section-head"><h2>Celebrity & Entertainment Buzz</h2><span class="small">Reported stories, interviews and entertainment chatter</span></div><p class="rr-home-note">Headlines link to their original publishers. Reports and rumors are not presented as verified facts.</p><div id="gossipList" class="rr-ent-grid" aria-live="polite"><p class="empty">Loading entertainment buzz…</p></div></section>
-<section id="podcasts" class="rr-home-section"><div class="section-head"><h2>International Entertainment Podcasts</h2><span class="small">Movie, drama, pop culture and streaming conversations</span></div><p class="rr-home-note">Discover podcasts from around the world and open them in a podcast app. Shows are not necessarily produced by streaming platforms.</p><div id="podcastsList" class="rr-ent-grid" aria-live="polite"><p class="empty">Loading podcasts…</p></div></section>
-<div class="notice">ReelRadar is a development prototype. Movie and TV search uses AMODB through a server-side endpoint, alongside Wikidata (CC0) film records and TVmaze series data. TVmaze data requires CC BY-SA attribution. Wikimedia Commons images are individually licensed and credited when available. AMODB metadata, ratings and TMDB-hosted poster rights have not been established for commercial use; verify permissions before monetizing. Theater showtimes, movie release calendars and entertainment headlines and podcasts are linked from third-party directories and publishers. Streaming-provider information is country-specific and should be confirmed with the provider. ReelRadar is independent and not affiliated with listed providers. Sources: <a href="https://www.wikidata.org" target="_blank" rel="noopener">Wikidata</a>, <a href="https://www.tvmaze.com" target="_blank" rel="noopener">TVmaze</a>.</div>
+
+
+
+
+
+
+
+
+<div class="rr-page" data-rr-page="kids"><div class="grid" id="grid"></div></div>
+<div class="rr-page" data-rr-page="watchlist"><section aria-labelledby="kidsHeading" class="rr-home-section" id="kids"><div class="section-head"><h2 id="kidsHeading">Kids &amp; Family</h2><span class="small">Curated discovery, not verified age classifications</span></div><div class="rr-home-controls"><label for="rrAge">Browse preference</label><select id="rrAge"><option value="all">All family categories</option><option value="preschool">Preschool</option><option value="animation">Animation</option><option value="educational">Educational shows</option><option value="family">Family movies</option><option value="teen">Teen shows</option></select><label><input id="rrHideTeen" type="checkbox"/> Hide teen suggestions on this browser</label></div><p class="rr-home-note">These are editorial groupings, not official age ratings. Please review individual titles before children watch. The hide option is a local viewing preference, not a secure parental control or age verification system. No videos autoplay.</p><div class="rr-family-grid" id="rrFamilyGroups"><p class="empty">Loading family discovery…</p></div><p class="rr-home-note">TV series data: <a href="https://www.tvmaze.com" rel="noopener noreferrer" target="_blank">TVmaze</a>. Family movie listings use live discovery data where available; age classifications are not verified.</p></section></div>
+<div class="rr-page" data-rr-page="series"><section class="rr-home-section" id="rr-tv-picks"><div class="section-head"><h2>TV shows</h2><span class="small">Live TVmaze series</span></div><div class="grid" id="rrTvPicks"><p class="empty">Loading series…</p></div></section><section class="rr-home-section" id="rr-kdrama-picks"><div class="section-head"><h2>K-Dramas</h2><span class="small">Curated titles · matched to TVmaze</span></div><div class="grid" id="rrKdramaPicks"><p class="empty">Loading Korean series…</p></div></section><div class="section-head"><h2>Explore television series from around the world</h2></div><div class="grid" id="rrPageGridSeries"></div><p class="rr-home-note">Loading live discoveries…</p></div><div class="rr-page" data-rr-page="movies"><section id="watchlist"><div class="section-head"><h2>My Watchlist <span class="rr-saved-count" id="watchlistCount"></span></h2><span class="small">Sign in to sync across devices · local saves available as guest</span></div><div class="grid rr-saved-grid" id="watchlistGrid"></div><p class="rr-saved-empty" id="watchlistEmpty">Save a movie or show using the bookmark button to see it here.</p></section><div class="section-head" id="movies"><h2>Movie discovery · AMODB + Wikidata</h2><span class="small">Search above for live results from multiple sources</span></div><div class="section-head"><h2>Discover movies from around the world</h2></div><div class="grid" id="rrPageGridMovies"></div><p class="rr-home-note">Loading live discoveries…</p></div>
+
+<div class="rr-page" data-rr-page="theaters"><div class="small" id="movieStatus">Search movies using AMODB, TVmaze and Wikidata. Images and ratings from AMODB are for development until commercial rights are confirmed.</div><div class="section-head" id="theaters"><h2>Now in theaters</h2><span class="small">Find films playing on the big screen</span></div><div class="rr-theater-tools"><label for="rrCinemaZip">Find cinemas by city or ZIP</label><div class="rr-theater-search"><input autocomplete="postal-code" id="rrCinemaZip" placeholder="e.g. Riverside, CA or 92501"/><button class="btn" id="rrFindCinema" type="button">Find cinemas ↗</button></div><p class="small">Movie listings depend on live catalog availability. Check the cinema for confirmed showtimes and tickets.</p></div><div aria-live="polite" class="grid" id="theatersList"><p class="empty">Checking current theatrical releases…</p></div></div>
+
+<div class="rr-page" data-rr-page="upcoming-movies"><p class="rr-home-note" id="rrTheaterStatus"></p><div class="section-head" id="upcoming-movies"><h2>Upcoming movies</h2><span class="small">Theatrical and streaming releases</span></div></div>
+
+<div class="rr-page" data-rr-page="upcoming-series"><div class="rr-global-grid" id="upcomingMoviesList"><p class="empty">Loading upcoming films…</p></div><div class="section-head" id="upcoming-series"><h2>Upcoming series &amp; episodes</h2><span class="small">Scheduled premieres and episodes · TVmaze</span></div><div class="feature-grid" id="rrUpcomingSeries"><p class="empty">Loading upcoming episodes…</p></div><div class="section-head"><h2>TV schedule today</h2></div><div class="feature-grid" id="upcomingSeriesList"><p class="empty">Loading today’s TV schedule…</p></div></div>
+
+
+<div class="rr-page" data-rr-page="news"><div class="section-head" id="updates"><h2>Recently aired episodes</h2><span class="small">Recent TV schedule data from TVmaze</span></div><div class="feature-grid" id="updatesList"><p class="empty">Loading recent episodes…</p></div><div class="section-head" id="news"><h2>Entertainment news</h2><span class="small">Casting, renewals, trailers and release announcements</span></div><p class="rr-home-note">Latest linked headlines from publishers. Tap to read the original report.</p></div>
+
+
+<div class="rr-page" data-rr-page="gossip"><div class="rr-ent-controls"><label for="rrEntRegion">Entertainment region</label><select id="rrEntRegion"><option value="global">Worldwide</option><option value="hollywood">Hollywood</option><option value="korea">Korea</option><option value="china">China</option><option value="japan">Japan</option><option value="india">India / Bollywood</option><option value="africa">Africa / Nollywood</option><option value="philippines">Philippines</option></select><button class="chip" id="rrEntRefresh" type="button">Refresh</button></div></div><div class="rr-page" data-rr-page="podcasts"><div aria-live="polite" class="rr-ent-grid" id="newsList"><p class="empty">Loading entertainment news…</p></div></div>
+<section class="rr-home-section" id="gossip"><div class="section-head"><h2>Celebrity &amp; Entertainment Buzz</h2><span class="small">Reported stories, interviews and entertainment chatter</span></div><p class="rr-home-note">Headlines link to their original publishers. Reports and rumors are not presented as verified facts.</p><div aria-live="polite" class="rr-ent-grid" id="gossipList"><p class="empty">Loading entertainment buzz…</p></div></section>
+<section class="rr-home-section" id="podcasts"><div class="section-head"><h2>International Entertainment Podcasts</h2><span class="small">Movie, drama, pop culture and streaming conversations</span></div><p class="rr-home-note">Discover podcasts from around the world and open them in a podcast app. Shows are not necessarily produced by streaming platforms.</p><div aria-live="polite" class="rr-ent-grid" id="podcastsList"><p class="empty">Loading podcasts…</p></div></section>
+<div class="notice">ReelRadar is a development prototype. Movie and TV search uses AMODB through a server-side endpoint, alongside Wikidata (CC0) film records and TVmaze series data. TVmaze data requires CC BY-SA attribution. Wikimedia Commons images are individually licensed and credited when available. AMODB metadata, ratings and TMDB-hosted poster rights have not been established for commercial use; verify permissions before monetizing. Theater showtimes, movie release calendars and entertainment headlines and podcasts are linked from third-party directories and publishers. Streaming-provider information is country-specific and should be confirmed with the provider. ReelRadar is independent and not affiliated with listed providers. Sources: <a href="https://www.wikidata.org" rel="noopener" target="_blank">Wikidata</a>, <a href="https://www.tvmaze.com" rel="noopener" target="_blank">TVmaze</a>.</div>
 <section class="notice" style="max-width:1200px;margin:0 auto;padding:15px 22px">Wikidata movie metadata is CC0. Wikimedia Commons files have separate licenses and attribution. AMODB search results may include ratings and images sourced from other providers; their appearance here does not establish commercial reuse rights.</section></main>
-<div id="modal" class="modal" role="dialog" aria-modal="true" aria-label="Title details"><div class="dialog"><button class="close" id="close" aria-label="Close">×</button><div class="rr-toolbar"><button type="button" id="rrExpand" class="rr-action" aria-pressed="false">⛶ Full screen</button><button type="button" id="rrSave" class="rr-action" aria-pressed="false">♡ Save to watchlist</button></div><div id="detail"></div></div></div>
+<div aria-label="Title details" aria-modal="true" class="modal" id="modal" role="dialog"><div class="dialog"><button aria-label="Close" class="close" id="close">×</button><div class="rr-toolbar"><button aria-pressed="false" class="rr-action" id="rrExpand" type="button">⛶ Full screen</button><button aria-pressed="false" class="rr-action" id="rrSave" type="button">♡ Save to watchlist</button></div><div id="detail"></div></div></div>
 <script>
 // Live catalog is loaded from AMODB discovery; no hard-coded sample movie cards.
 const titles=[];
@@ -342,17 +349,16 @@ function featureCards(id,items){document.getElementById(id).innerHTML=items.map(
 async function rrLoadTheaters(){
  const root=document.getElementById('theatersList'),status=document.getElementById('rrTheaterStatus');
  try{
-  const r=await fetch('/api/discover?category=now_playing');
+  const r=await fetch('/api/theatrical?type=now_playing');
   if(!r.ok)throw Error('Now-playing endpoint unavailable');
   const data=await r.json();
-  // Only use results when the backend explicitly confirms the theatrical category.
-  if(data.category!=='now_playing'&&data.category!=='now-playing'&&data.list_type!=='now_playing')throw Error('Unverified theatrical category');
-  const items=(data.results||[]).map(rrGlobalFromApi).filter(t=>t&&t.type==='Movie'&&t.poster).slice(0,15);
+  if(!Array.isArray(data.results))throw Error('Invalid now-playing response');
+  const items=data.results.map(x=>rrGlobalFromApi({...x,media_type:'movie'})).filter(t=>t&&t.type==='Movie'&&t.poster).slice(0,15);
   if(!items.length)throw Error('No current movies returned');
   items.forEach(t=>{if(!titles.some(x=>rrTitleKey(x)===rrTitleKey(t)))titles.push(t)});
   root.innerHTML=items.map(rrCardHtml).join('');rrWireCards(root,items);
-  status.textContent='Current movie discovery listings; screening schedules and ticket availability must be checked with cinemas.';
- }catch(e){root.innerHTML='<article class="feature-card"><span class="feature-label">LIVE SHOWTIMES</span><h3>Find movies playing near you</h3><p>Current theatrical listings are not connected yet. Search your local cinema to see verified films, times and tickets.</p><p><a class="btn" href="https://www.fandango.com/" target="_blank" rel="noopener noreferrer">Browse Fandango ↗</a></p></article><article class="feature-card"><span class="feature-label">CINEMAS</span><h3>Browse local theaters</h3><p>Use the city or ZIP search above to find nearby cinemas and their official showtime pages.</p></article>';root.classList.add('rr-theater-fallback');status.textContent='Live theatrical listings are not yet enabled on the ReelRadar backend.';}
+  status.textContent='US now-playing release listings from AMODB; local cinema showtimes and tickets must be verified separately.';
+ }catch(e){root.innerHTML='<article class="feature-card"><span class="feature-label">LIVE SHOWTIMES</span><h3>Find movies playing near you</h3><p>Current theatrical listings are not connected yet. Search your local cinema to see verified films, times and tickets.</p><p><a class="btn" href="https://www.fandango.com/" target="_blank" rel="noopener noreferrer">Browse Fandango ↗</a></p></article><article class="feature-card"><span class="feature-label">CINEMAS</span><h3>Browse local theaters</h3><p>Use the city or ZIP search above to find nearby cinemas and their official showtime pages.</p></article>';root.classList.add('rr-theater-fallback');status.textContent='Now-playing movie listings are temporarily unavailable. Check cinema links for showtimes.';}
 }
 document.getElementById('rrFindCinema').addEventListener('click',()=>{const q=document.getElementById('rrCinemaZip').value.trim();if(!q){document.getElementById('rrCinemaZip').focus();return;}window.open('https://www.google.com/maps/search/?api=1&query='+encodeURIComponent('movie theaters near '+q),'_blank','noopener,noreferrer');});
 document.getElementById('rrCinemaZip').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('rrFindCinema').click();});
@@ -516,7 +522,6 @@ async function rrLoadGlobalDiscovery(){
 
 rrLoadGlobalDiscovery();
 </script>
-
 <script>
 (function(){
  const button=document.getElementById('rrMenuToggle');
@@ -528,25 +533,24 @@ rrLoadGlobalDiscovery();
  document.addEventListener('keydown',e=>{if(e.key==='Escape')setOpen(false)});
 })();
 </script>
-
-<div class="rr-auth-backdrop" id="rrAuth" role="dialog" aria-modal="true" aria-label="ReelRadar account" aria-hidden="true">
-  <div class="rr-auth-panel">
-    <button class="rr-auth-close" type="button" id="rrAuthClose" aria-label="Close account panel">×</button>
-    <div class="logo">Reel<span>Radar</span></div>
-    <h2 id="rrAuthHeading">Welcome back</h2>
-    <p id="rrAuthIntro">Sign in to your ReelRadar account.</p>
-    <div class="rr-auth-tabs"><button type="button" class="rr-auth-tab active" data-auth-mode="signin" aria-pressed="true">Sign in</button><button type="button" class="rr-auth-tab" data-auth-mode="signup" aria-pressed="false">Create account</button></div>
-    <form class="rr-auth-form" id="rrAuthForm" autocomplete="off">
-      <label>Username<input id="rrAuthUsername" name="username" autocomplete="username" minlength="3" maxlength="30" pattern="[A-Za-z0-9_]+" title="Use letters, numbers or underscores" required placeholder="Your username"></label>
-      <label>Email<input id="rrAuthEmail" type="email" name="email" autocomplete="email" required placeholder="you@example.com"></label>
-      <label>Password<input id="rrAuthPassword" name="password" type="password" autocomplete="current-password" minlength="8" required placeholder="At least 8 characters"></label>
-      <button class="btn rr-auth-submit" type="submit" id="rrAuthSubmit">Sign in</button>
-    </form>
-    <div class="rr-auth-divider">or</div>
-    <button class="rr-google-btn" type="button" id="rrGoogleSignIn"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6C44.4 38.03 46.98 31.88 46.98 24.55z"/><path fill="#FBBC05" d="M10.53 28.59A14.42 14.42 0 0 1 9.75 24c0-1.59.27-3.13.76-4.59l-7.98-6.19A23.86 23.86 0 0 0 0 24c0 3.87.93 7.52 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.92-2.13 15.89-5.8l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.97 6.19C6.51 42.62 14.62 48 24 48z"/></svg><span id="rrGoogleText">Continue with Google</span></button>
-    <p class="rr-auth-status" id="rrAuthStatus" role="status" aria-live="polite"></p>
-    <p class="rr-auth-note">Use email and password or Google. New email accounts may require confirmation. Passwords are handled by Supabase Auth, not stored by ReelRadar.</p>
-  </div>
+<div aria-hidden="true" aria-label="ReelRadar account" aria-modal="true" class="rr-auth-backdrop" id="rrAuth" role="dialog">
+<div class="rr-auth-panel">
+<button aria-label="Close account panel" class="rr-auth-close" id="rrAuthClose" type="button">×</button>
+<div class="logo">Reel<span>Radar</span></div>
+<h2 id="rrAuthHeading">Welcome back</h2>
+<p id="rrAuthIntro">Sign in to your ReelRadar account.</p>
+<div class="rr-auth-tabs"><button aria-pressed="true" class="rr-auth-tab active" data-auth-mode="signin" type="button">Sign in</button><button aria-pressed="false" class="rr-auth-tab" data-auth-mode="signup" type="button">Create account</button></div>
+<form autocomplete="off" class="rr-auth-form" id="rrAuthForm">
+<label>Username<input autocomplete="username" id="rrAuthUsername" maxlength="30" minlength="3" name="username" pattern="[A-Za-z0-9_]+" placeholder="Your username" required="" title="Use letters, numbers or underscores"/></label>
+<label>Email<input autocomplete="email" id="rrAuthEmail" name="email" placeholder="you@example.com" required="" type="email"/></label>
+<label>Password<input autocomplete="current-password" id="rrAuthPassword" minlength="8" name="password" placeholder="At least 8 characters" required="" type="password"/></label>
+<button class="btn rr-auth-submit" id="rrAuthSubmit" type="submit">Sign in</button>
+</form>
+<div class="rr-auth-divider">or</div>
+<button class="rr-google-btn" id="rrGoogleSignIn" type="button"><svg aria-hidden="true" height="20" viewbox="0 0 48 48" width="20"><path d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" fill="#EA4335"></path><path d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6C44.4 38.03 46.98 31.88 46.98 24.55z" fill="#4285F4"></path><path d="M10.53 28.59A14.42 14.42 0 0 1 9.75 24c0-1.59.27-3.13.76-4.59l-7.98-6.19A23.86 23.86 0 0 0 0 24c0 3.87.93 7.52 2.56 10.78l7.97-6.19z" fill="#FBBC05"></path><path d="M24 48c6.48 0 11.92-2.13 15.89-5.8l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.97 6.19C6.51 42.62 14.62 48 24 48z" fill="#34A853"></path></svg><span id="rrGoogleText">Continue with Google</span></button>
+<p aria-live="polite" class="rr-auth-status" id="rrAuthStatus" role="status"></p>
+<p class="rr-auth-note">Use email and password or Google. New email accounts may require confirmation. Passwords are handled by Supabase Auth, not stored by ReelRadar.</p>
+</div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
@@ -598,20 +602,21 @@ const RR_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_J2NijroBpLo-jVzLL_LTWQ_a3tFz
 </script>
 <script>
 
-// Release listings: only show dated, future films returned by the backend.
+// Release listings: only show dated, future films returned by the theatrical backend.
 async function rrLoadUpcomingMovies(){
  const root=document.getElementById('upcomingMoviesList');
  const now=new Date();now.setHours(0,0,0,0);
  try{
-  const r=await fetch('/api/upcoming?type=movie');if(!r.ok)throw Error('Upcoming movie endpoint not configured');
+  const r=await fetch('/api/theatrical?type=upcoming');if(!r.ok)throw Error('Upcoming movie endpoint not configured');
   const data=await r.json();
-  const items=(data.results||[]).filter(x=>x.media_type==='movie'||x.title).map(x=>{
+  if(!Array.isArray(data.results))throw Error('Invalid upcoming response');
+  const items=data.results.filter(x=>x.title).map(x=>{
    const t=rrGlobalFromApi({...x,media_type:'movie'});if(t)t.releaseDate=x.release_date;return t;
   }).filter(x=>x&&x.releaseDate&&new Date(x.releaseDate+'T00:00:00')>=now).sort((a,b)=>a.releaseDate.localeCompare(b.releaseDate)).slice(0,20);
   for(const t of items)if(!titles.some(x=>rrTitleKey(x)===rrTitleKey(t)))titles.push(t);
   root.innerHTML=items.length?items.map(t=>`<div><div class="small" style="margin-bottom:7px;color:#ff9db2">Releases ${rrEscape(t.releaseDate)}</div>${rrCardHtml(t)}</div>`).join(''):'<p class="empty">No verified upcoming release dates were returned.</p>';
   rrWireCards(root,items);
- }catch(e){root.innerHTML='<article class="feature-card"><span class="feature-label">RELEASE CALENDAR</span><h3>Upcoming movies</h3><p>Live upcoming film listings need a release-calendar endpoint. We won’t display invented dates or old sample movies.</p><p><a href="https://www.themoviedb.org/movie/upcoming" target="_blank" rel="noopener noreferrer" style="color:#ff9db2">Browse upcoming movie releases ↗</a></p></article>';}
+ }catch(e){root.innerHTML='<article class="feature-card"><span class="feature-label">RELEASE CALENDAR</span><h3>Upcoming movies</h3><p>Upcoming release data is temporarily unavailable. We won’t display invented dates or old sample movies.</p><p><a href="https://www.themoviedb.org/movie/upcoming" target="_blank" rel="noopener noreferrer" style="color:#ff9db2">Browse upcoming movie releases ↗</a></p></article>';}
 }
 async function rrLoadUpcomingSeries(){
  const root=document.getElementById('rrUpcomingSeries');
@@ -628,4 +633,45 @@ async function rrLoadUpcomingSeries(){
 }
 rrLoadUpcomingMovies();rrLoadUpcomingSeries();
 </script>
-</body></html>
+<script>(function(){
+ const pages=new Set(['home','movies','series','theaters','upcoming-movies','upcoming-series','news','gossip','podcasts','kids','watchlist']);
+ const aliases={'top':'home','trending':'home','rr-movie-picks':'movies','rr-tv-picks':'series','rr-kdrama-picks':'series','updates':'upcoming-series'};
+ const pageTitle={'home':'Discover','movies':'Movies','series':'TV Shows','theaters':'Now in Theaters','upcoming-movies':'Upcoming Movies','upcoming-series':'Upcoming Series','news':'Entertainment News','gossip':'Celebrity & Entertainment Buzz','podcasts':'Entertainment Podcasts','kids':'Kids & Family','watchlist':'My Watchlist'};
+ const pageForHash=()=>{const h=decodeURIComponent(location.hash.slice(1));return pages.has(h)?h:(aliases[h]||'home');};
+ const panels=[...document.querySelectorAll('[data-rr-page]')];
+ function populateBrowse(){
+   const all=typeof rrGlobalTitles!=='undefined'&&Array.isArray(rrGlobalTitles)?rrGlobalTitles:[];
+   for(const [name,id] of [['movies','rrPageGridMovies'],['series','rrPageGridSeries']]){
+     const el=document.getElementById(id);if(!el)return;
+     const items=all.filter(x=>name==='movies'?x.type==='Movie':x.type!=='Movie').slice(0,30);
+     if(items.length&&typeof rrCardHtml==='function'){
+       el.innerHTML=items.map(rrCardHtml).join('');
+       if(typeof rrWireCards==='function')rrWireCards(el,items);
+       const note=el.nextElementSibling;if(note)note.textContent='Live discovery titles · Select a poster for details and availability.';
+     }else if(name==='series'&&typeof tvmazeTitles!=='undefined'&&tvmazeTitles.length&&typeof rrCardHtml==='function'){
+       el.innerHTML=tvmazeTitles.slice(0,24).map(rrCardHtml).join('');rrWireCards(el,tvmazeTitles.slice(0,24));
+     }
+   }
+ }
+ function navigate(){
+   const page=pageForHash();
+   panels.forEach(el=>el.classList.toggle('rr-page-active',el.dataset.rrPage===page));
+   document.querySelectorAll('#rrMainNav a').forEach(a=>a.classList.toggle('rr-nav-active',pageForLink(a.getAttribute('href'))===page));
+   document.title=(page==='home'?'ReelRadar — Find your next watch':pageTitle[page]+' | ReelRadar');
+   const menu=document.getElementById('rrMainNav');menu?.classList.remove('rr-nav-open');
+   const toggle=document.getElementById('rrMenuToggle');toggle?.setAttribute('aria-expanded','false');
+   if(page==='movies'||page==='series')populateBrowse();
+   window.scrollTo({top:0,behavior:'instant'});
+ }
+ function pageForLink(href){const h=(href||'').replace(/^#/,'');return pages.has(h)?h:(aliases[h]||'home');}
+ // Make the logo and header navigation open page views.
+ document.querySelectorAll('#rrMainNav a').forEach(a=>{const target=pageForLink(a.getAttribute('href'));a.setAttribute('href','#'+target);});
+ document.querySelector('.rr-brand')?.setAttribute('href','#home');
+ window.addEventListener('hashchange',navigate);
+ // Search is available on every page, with results shown on Discover.
+ const search=document.getElementById('search');
+ search?.addEventListener('input',()=>{if(search.value.trim().length>=2&&pageForHash()!=='home')location.hash='home';});
+ const global=document.getElementById('rrGlobalDiscovery');
+ if(global&&typeof MutationObserver!=='undefined')new MutationObserver(()=>{if(pageForHash()==='movies'||pageForHash()==='series')populateBrowse();}).observe(global,{childList:true});
+ navigate();
+})();</script></body></html>
