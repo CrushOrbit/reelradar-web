@@ -127,6 +127,14 @@ img{max-width:100%}
 @media(max-width:699px){.nav{flex-wrap:wrap}.nav .search{order:5;flex-basis:100%;max-width:none}.rr-account-trigger{margin-left:auto}#modal .dialog{width:calc(100vw - 12px);max-height:95dvh;padding:16px}#modal .detail{grid-template-columns:1fr;gap:12px}#modal .detail>img,#modal .detail>.poster-placeholder{width:min(45vw,175px)}#modal .rr-episode-card{grid-template-columns:minmax(100px,34%) minmax(0,1fr);gap:11px}#modal .rr-episode-content strong{font-size:13px}#modal .rr-episode-summary{font-size:12px}#modal .rr-recommend-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.rr-facts{min-width:0}}
 @media(max-width:360px){#modal .rr-episode-card{grid-template-columns:1fr}#modal .rr-episode-thumb{max-width:100%}.grid,.rr-global-grid{gap:9px}}
 </style>
+<style>
+/* ReelRadar compact episode guide and regional watch lookup */
+#modal .rr-country-control{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0 16px;color:#dcdce5;font-size:14px}
+#modal .rr-country-control select{background:#242432;color:#fff;border:1px solid #626174;border-radius:9px;padding:9px 12px;max-width:100%}
+#modal .rr-episode-card{border-bottom:1px solid #353543}
+@media(max-width:699px){#modal .rr-episode-card{display:grid;grid-template-columns:minmax(112px,38%) minmax(0,1fr);gap:12px;padding:13px 0}#modal .rr-episode-thumb{aspect-ratio:16/10}#modal .rr-episode-summary{line-height:1.45;margin:5px 0;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}#modal .rr-episode-content strong{font-size:13px}#modal .rr-episode-more p{font-size:12px}}
+@media(max-width:360px){#modal .rr-episode-card{grid-template-columns:minmax(100px,38%) minmax(0,1fr)}}
+</style>
 </head>
 <body>
 <header><div class="nav"><a aria-label="ReelRadar home" class="rr-brand" href="#top"><div class="logo">Reel<span>Radar</span></div></a><button aria-controls="rrMainNav" aria-expanded="false" aria-label="Open navigation" class="rr-menu-toggle" id="rrMenuToggle">☰</button><nav id="rrMainNav"><a href="#trending">Discover</a><a href="#movies">Movies</a><a href="#series">TV Shows</a><a href="#theaters">In Theaters</a><a href="#upcoming-movies">Upcoming Movies</a><a href="#upcoming-series">Upcoming Series</a><a href="#news">News</a><a href="#gossip">Gossip</a><a href="#podcasts">Podcasts</a><a href="#kids">Kids &amp; Family</a><a href="#watchlist">My Watchlist</a></nav><button class="rr-account-trigger" id="rrAccountOpen" type="button">Sign in / Join</button><input aria-label="Search movies and shows" class="search" id="search" placeholder="Search movies &amp; shows…"/></div></header>
@@ -355,8 +363,12 @@ function rrRenderWatchlist(){const grid=document.getElementById('watchlistGrid')
 // Streaming availability comes from ReelRadar's secure server-side AMODB proxy.
 // The selected country is US for now; providers may differ elsewhere.
 let rrProviderRequest=0;
+let rrWatchCountry='US';
+const rrWatchCountries={US:'United States',GB:'United Kingdom',CA:'Canada',AU:'Australia',IN:'India',KR:'South Korea',JP:'Japan',PH:'Philippines',NG:'Nigeria',KE:'Kenya',ZA:'South Africa'};
+function rrProviderCountryControl(){return `<label class="rr-country-control" for="rrWatchCountry">Check streaming in <select id="rrWatchCountry">${Object.entries(rrWatchCountries).map(([code,name])=>`<option value="${code}" ${rrWatchCountry===code?'selected':''}>${name}</option>`).join('')}</select></label>`;}
+
 function rrWatchFallback(title){
- const q=encodeURIComponent([title.title,title.year,'where to watch streaming US'].filter(Boolean).join(' '));
+ const q=encodeURIComponent([title.title,title.year,'where to watch streaming',rrWatchCountries[rrWatchCountry]||rrWatchCountry].filter(Boolean).join(' '));
  return `<div class="rr-watch-fallback"><a href="https://www.google.com/search?q=${q}" target="_blank" rel="noopener noreferrer">Find where to watch ↗</a><p class="rr-detail-note">Search results are not verified streaming availability. Confirm the title, region and price with the provider.</p></div>`;
 }
 async function rrFindProviderId(title){
@@ -394,8 +406,8 @@ async function rrLoadProviders(title,requestId){
  try{
   const identity=await rrFindProviderId(title);
   if(!isCurrent())return;
-  if(!identity){target.innerHTML='<p class="small">No verified US streaming data found for this title.</p>'+fallback;return;}
-  const params=new URLSearchParams({type:identity.type,id:String(identity.id),country:'US'});
+  if(!identity){target.innerHTML='<p class="small">No verified streaming data found for this title in the selected country.</p>'+fallback;return;}
+  const params=new URLSearchParams({type:identity.type,id:String(identity.id),country:rrWatchCountry});
   const controller=new AbortController();
   const timer=setTimeout(()=>controller.abort(),10000);
   let response;
@@ -405,7 +417,7 @@ async function rrLoadProviders(title,requestId){
   const data=await response.json();
   if(!isCurrent())return;
   const info=data.providers;
-  if(!info){target.innerHTML='<p class="small">No verified US streaming listings are available for this title.</p>'+fallback;return;}
+  if(!info){target.innerHTML='<p class="small">No verified streaming listings are available for this title in the selected country.</p>'+fallback;return;}
   const groups=[['Stream with subscription',info.flatrate],['Watch free',info.free],['Free with ads',info.ads],['Rent',info.rent],['Buy',info.buy]];
   const sections=groups.map(([heading,items])=>{
    if(!Array.isArray(items)||!items.length)return '';
@@ -416,9 +428,9 @@ async function rrLoadProviders(title,requestId){
    }).join('')}</div></div>`;
   }).filter(Boolean);
   const link=rrSafeLink(info.link);
-  target.innerHTML=(sections.join('')||'<p class="small">No verified streaming, rental or purchase options currently listed in the US.</p>')+
+  target.innerHTML=(sections.join('')||'<p class="small">No streaming, rental or purchase options are currently listed for the selected country.</p>')+
    (link?`<p><a href="${rrEscape(link)}" target="_blank" rel="noopener noreferrer">View provider listing ↗</a></p>`:'')+
-   fallback+'<p class="rr-detail-note">Provider data is for the United States. Availability and prices may change.</p>';
+   fallback+'<p class="rr-detail-note">Availability and prices may change. Confirm with the provider.</p>';
  }catch(error){
   if(isCurrent())target.innerHTML='<p class="small">Streaming availability could not be checked right now.</p>'+fallback;
  }
@@ -449,7 +461,7 @@ function rrDetailSuggestions(t){
   return {x,score,shared,regionConflict};
  }).filter(Boolean);
  // Require meaningful genre overlap; don't suggest unrelated shows merely because their titles contain the same word.
- const matches=scored.filter(v=>v.shared>0&&!v.regionConflict&&v.score>=20).sort((a,b)=>b.score-a.score).slice(0,8).map(v=>v.x);
+ const matches=scored.filter(v=>v.shared>0&&!v.regionConflict&&v.score>=45).sort((a,b)=>b.score-a.score).slice(0,8).map(v=>v.x);
  return `<section class="rr-detail-block"><h3>More like this</h3>${matches.length?`<div class="rr-recommend-grid">${matches.map(x=>`<button class="rr-recommend-card" type="button" data-suggest-key="${rrEscape(rrTitleKey(x))}">${x.poster?`<img loading="lazy" src="${rrEscape(x.poster)}" alt="${rrEscape(x.title)} poster">`:'<span class="rr-recommend-placeholder">🎬</span>'}<strong>${rrEscape(x.title)}</strong><small>${rrEscape(x.year)} · ${rrEscape(x.genre||x.type)}</small></button>`).join('')}</div><p class="rr-detail-note">Suggestions prioritize matching genres, language or country when known, and release years. Availability depends on loaded titles.</p>`:'<p class="rr-detail-note">No closely related titles are available in the loaded catalog yet.</p>'}</section>`;
 }
 
@@ -490,7 +502,7 @@ function openDetail(id){
  <button class="btn" id="rrDetailSave" type="button">${rrIsSaved(t)?'♥ Saved to watchlist':'♡ Add to watchlist'}</button>
  <a class="btn secondary" href="${trailerUrl}" target="_blank" rel="noopener noreferrer">▶ Find trailer ↗</a>
  </div>
- <section class="rr-detail-block"><h3>Where to watch</h3><div id="rrProviderResults" aria-live="polite">${providerIntro}</div><p class="rr-detail-note">Streaming options vary by location and may change. Check the provider before subscribing.</p></section>
+ <section class="rr-detail-block"><h3>Where to watch</h3>${rrProviderCountryControl()}<div id="rrProviderResults" aria-live="polite">${providerIntro}</div><p class="rr-detail-note">Streaming options vary by location and may change. Check the provider before subscribing.</p></section>
  ${t.wikidataId?`<section class="rr-detail-block"><h3>Cast &amp; credits</h3><div id="movieCredits" data-movie="${rrEscape(t.wikidataId)}" class="small">Loading credits…</div></section>`:''}
  ${rrDetailSuggestions(t)}
  <p class="rr-detail-note">Catalog source: ${rrEscape(t.source||'ReelRadar')}. Details vary by source.</p>
@@ -503,6 +515,7 @@ function openDetail(id){
  rrUpdateSaveButton(t);
  const providerRequestId=++rrProviderRequest;
  rrLoadProviders(t,providerRequestId);
+ document.getElementById('rrWatchCountry')?.addEventListener('change',e=>{rrWatchCountry=e.target.value;rrLoadProviders(t,++rrProviderRequest);});
  if(t.wikidataId)loadMovieCredits(t);
  if(t.tvmazeId)loadShowExtras(t);
  else if(t.type!=='Movie')rrFindTVmazeDetail(t);
