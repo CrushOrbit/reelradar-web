@@ -64,6 +64,7 @@ main{max-width:1380px}.rr-quick-nav{display:flex;gap:10px;overflow-x:auto;scroll
 </style>
 <style>
 .rr-ent-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:15px 0}.rr-ent-controls select{background:#20202b;color:white;border:1px solid #454554;border-radius:9px;padding:10px}.rr-ent-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}.rr-ent-card{display:flex;flex-direction:column;gap:9px;background:#171823;border:1px solid #383848;border-radius:14px;padding:16px;color:#f7f7fb;text-decoration:none;min-width:0}.rr-ent-card:hover{border-color:#ff365d}.rr-ent-card h3{font-size:15px;line-height:1.4;margin:0}.rr-ent-card .meta{line-height:1.5}.rr-ent-card img{height:85px;width:85px;border-radius:12px;object-fit:cover}.rr-ent-card .rr-ent-link{color:#ff9db2;font-size:12px;font-weight:700}
+.rr-theater-tools{margin:14px 0 18px;padding:17px;border:1px solid #393747;border-radius:14px;background:#171823}.rr-theater-tools label{display:block;font-weight:700;margin-bottom:10px}.rr-theater-search{display:flex;flex-wrap:wrap;gap:10px}.rr-theater-search input{flex:1;min-width:170px;background:#0e0e17;border:1px solid #555568;border-radius:9px;padding:12px;color:white;font:inherit}.rr-theater-fallback{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}.rr-theater-fallback .feature-card{min-width:0}
 </style>
 </head>
 <body>
@@ -86,10 +87,10 @@ main{max-width:1380px}.rr-quick-nav{display:flex;gap:10px;overflow-x:auto;scroll
 <div class="section-head" id="movies"><h2>Movie discovery · AMODB + Wikidata</h2><span class="small">Search above for live results from multiple sources</span></div>
 <div id="movieStatus" class="small">Search movies using AMODB, TVmaze and Wikidata. Images and ratings from AMODB are for development until commercial rights are confirmed.</div>
 <div class="section-head" id="theaters"><h2>Now in theaters</h2><span class="small">Find films playing on the big screen</span></div>
-<div id="theatersList" class="feature-grid"></div>
+<div class="rr-theater-tools"><label for="rrCinemaZip">Find cinemas by city or ZIP</label><div class="rr-theater-search"><input id="rrCinemaZip" placeholder="e.g. Riverside, CA or 92501" autocomplete="postal-code"><button type="button" class="btn" id="rrFindCinema">Find cinemas ↗</button></div><p class="small">Movie listings depend on live catalog availability. Check the cinema for confirmed showtimes and tickets.</p></div><div id="theatersList" class="grid" aria-live="polite"><p class="empty">Checking current theatrical releases…</p></div><p id="rrTheaterStatus" class="rr-home-note"></p>
 <div class="section-head" id="upcoming-movies"><h2>Upcoming movies</h2><span class="small">Theatrical and streaming releases</span></div>
-<div id="upcomingMoviesList" class="feature-grid"></div>
-<div class="section-head" id="upcoming-series"><h2>TV schedule</h2><span class="small">Episodes airing today · TVmaze live data</span></div>
+<div id="upcomingMoviesList" class="rr-global-grid"><p class="empty">Loading upcoming films…</p></div>
+<div class="section-head" id="upcoming-series"><h2>Upcoming series & episodes</h2><span class="small">Scheduled premieres and episodes · TVmaze</span></div><div id="rrUpcomingSeries" class="feature-grid"><p class="empty">Loading upcoming episodes…</p></div><div class="section-head"><h2>TV schedule today</h2></div>
 <div id="upcomingSeriesList" class="feature-grid"><p class="empty">Loading today’s TV schedule…</p></div>
 <div class="section-head" id="updates"><h2>Recently aired episodes</h2><span class="small">Recent TV schedule data from TVmaze</span></div>
 <div id="updatesList" class="feature-grid"><p class="empty">Loading recent episodes…</p></div>
@@ -337,8 +338,26 @@ document.querySelectorAll('.chip[data-filter]').forEach(b=>b.addEventListener('c
 document.getElementById('rrClearSearch').addEventListener('click',()=>{search.value='';search.dispatchEvent(new Event('input'));search.focus();});
 search.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();search.blur();document.getElementById('rrSearchResults').scrollIntoView({block:'start',behavior:'smooth'});}});document.getElementById('close').addEventListener('click',()=>document.getElementById('modal').classList.remove('open'));document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal')e.currentTarget.classList.remove('open')});document.addEventListener('keydown',e=>{if(e.key==='Escape')document.getElementById('modal').classList.remove('open')});
 function featureCards(id,items){document.getElementById(id).innerHTML=items.map(x=>`<article class="feature-card"><span class="feature-label">${x[2]}</span><h3>${x[0]}</h3><p>${x[1]}</p></article>`).join('')}
-featureCards('theatersList', [['Find nearby cinemas','Choose a city or ZIP code to find theaters, showtimes, formats and ticket links.','CINEMA GUIDE'],['Today’s showtimes','Browse screening times by date, language and format when provider data is available.','SHOWTIMES'],['Ticket links','Open official cinema or ticketing pages to check prices and availability.','BOOKING']]);
-featureCards('upcomingMoviesList', [['Upcoming movie releases','Browse announced release dates, posters, trailers, cast and synopsis.','MOVIES'],['Release calendar','Filter upcoming films by month, genre and country.','CALENDAR'],['Release date alerts','A future feature for saving titles and tracking date changes.','COMING SOON']]);
+// Theaters: do not label general trending movies as confirmed theatrical screenings.
+async function rrLoadTheaters(){
+ const root=document.getElementById('theatersList'),status=document.getElementById('rrTheaterStatus');
+ try{
+  const r=await fetch('/api/discover?category=now_playing');
+  if(!r.ok)throw Error('Now-playing endpoint unavailable');
+  const data=await r.json();
+  // Only use results when the backend explicitly confirms the theatrical category.
+  if(data.category!=='now_playing'&&data.category!=='now-playing'&&data.list_type!=='now_playing')throw Error('Unverified theatrical category');
+  const items=(data.results||[]).map(rrGlobalFromApi).filter(t=>t&&t.type==='Movie'&&t.poster).slice(0,15);
+  if(!items.length)throw Error('No current movies returned');
+  items.forEach(t=>{if(!titles.some(x=>rrTitleKey(x)===rrTitleKey(t)))titles.push(t)});
+  root.innerHTML=items.map(rrCardHtml).join('');rrWireCards(root,items);
+  status.textContent='Current movie discovery listings; screening schedules and ticket availability must be checked with cinemas.';
+ }catch(e){root.innerHTML='<article class="feature-card"><span class="feature-label">LIVE SHOWTIMES</span><h3>Find movies playing near you</h3><p>Current theatrical listings are not connected yet. Search your local cinema to see verified films, times and tickets.</p><p><a class="btn" href="https://www.fandango.com/" target="_blank" rel="noopener noreferrer">Browse Fandango ↗</a></p></article><article class="feature-card"><span class="feature-label">CINEMAS</span><h3>Browse local theaters</h3><p>Use the city or ZIP search above to find nearby cinemas and their official showtime pages.</p></article>';root.classList.add('rr-theater-fallback');status.textContent='Live theatrical listings are not yet enabled on the ReelRadar backend.';}
+}
+document.getElementById('rrFindCinema').addEventListener('click',()=>{const q=document.getElementById('rrCinemaZip').value.trim();if(!q){document.getElementById('rrCinemaZip').focus();return;}window.open('https://www.google.com/maps/search/?api=1&query='+encodeURIComponent('movie theaters near '+q),'_blank','noopener,noreferrer');});
+document.getElementById('rrCinemaZip').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('rrFindCinema').click();});
+rrLoadTheaters();
+
 // TV schedule is populated live from TVmaze.
 // Recently aired episodes are populated live from TVmaze.
 render();loadTVmazeShows();loadTVSchedules();
@@ -364,7 +383,7 @@ async function rrLoadKids(){
 }
 
 // Homepage discovery. Curated selections are editorial examples, not a popularity ranking.
-const rrHomeGroups={preschool:['Bluey','Peppa Pig','Daniel Tiger’s Neighborhood'],animation:['Bluey','Adventure Time','The Amazing World of Gumball'],educational:['Sesame Street','The Magic School Bus','Wild Kratts'],teen:['Heartstopper','The Baby-Sitters Club','Julie and the Phantoms']};
+const rrHomeGroups={preschool:['Bluey','Peppa Pig','Daniel Tiger’s Neighborhood','Paw Patrol','Hey Duggee','Gabby’s Dollhouse','Mickey Mouse Clubhouse'],animation:['Bluey','Adventure Time','The Amazing World of Gumball','SpongeBob SquarePants','Avatar: The Last Airbender','The Loud House'],educational:['Sesame Street','The Magic School Bus','Wild Kratts','Numberblocks','StoryBots','Octonauts','Arthur'],teen:['Heartstopper','The Baby-Sitters Club','Julie and the Phantoms']};
 const rrKoreanNames=['Queen of Tears','Business Proposal','Crash Landing on You','Hometown Cha-Cha-Cha','Extraordinary Attorney Woo'];
 async function rrExactShow(name){
  try{const r=await fetch(`${TVMAZE}/search/shows?q=${encodeURIComponent(name)}`);if(!r.ok)throw Error('TVmaze '+r.status);const data=await r.json();const norm=x=>String(x).toLowerCase().replace(/[^a-z0-9]/g,'');const hit=data.find(x=>norm(x.show.name)===norm(name));return hit?fromTVmaze(hit.show):null}catch(e){console.warn('TVmaze discovery failed:',name,e);return null;}
@@ -576,5 +595,37 @@ const RR_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_J2NijroBpLo-jVzLL_LTWQ_a3tFz
  function refresh(){const token=++run;const region=document.getElementById('rrEntRegion').value;['news','gossip','podcasts'].forEach(kind=>load(kind,region,token));}
  document.getElementById('rrEntRegion')?.addEventListener('change',refresh);document.getElementById('rrEntRefresh')?.addEventListener('click',refresh);refresh();
 })();
+</script>
+<script>
+
+// Release listings: only show dated, future films returned by the backend.
+async function rrLoadUpcomingMovies(){
+ const root=document.getElementById('upcomingMoviesList');
+ const now=new Date();now.setHours(0,0,0,0);
+ try{
+  const r=await fetch('/api/upcoming?type=movie');if(!r.ok)throw Error('Upcoming movie endpoint not configured');
+  const data=await r.json();
+  const items=(data.results||[]).filter(x=>x.media_type==='movie'||x.title).map(x=>{
+   const t=rrGlobalFromApi({...x,media_type:'movie'});if(t)t.releaseDate=x.release_date;return t;
+  }).filter(x=>x&&x.releaseDate&&new Date(x.releaseDate+'T00:00:00')>=now).sort((a,b)=>a.releaseDate.localeCompare(b.releaseDate)).slice(0,20);
+  for(const t of items)if(!titles.some(x=>rrTitleKey(x)===rrTitleKey(t)))titles.push(t);
+  root.innerHTML=items.length?items.map(t=>`<div><div class="small" style="margin-bottom:7px;color:#ff9db2">Releases ${rrEscape(t.releaseDate)}</div>${rrCardHtml(t)}</div>`).join(''):'<p class="empty">No verified upcoming release dates were returned.</p>';
+  rrWireCards(root,items);
+ }catch(e){root.innerHTML='<article class="feature-card"><span class="feature-label">RELEASE CALENDAR</span><h3>Upcoming movies</h3><p>Live upcoming film listings need a release-calendar endpoint. We won’t display invented dates or old sample movies.</p><p><a href="https://www.themoviedb.org/movie/upcoming" target="_blank" rel="noopener noreferrer" style="color:#ff9db2">Browse upcoming movie releases ↗</a></p></article>';}
+}
+async function rrLoadUpcomingSeries(){
+ const root=document.getElementById('rrUpcomingSeries');
+ try{
+  const days=Array.from({length:7},(_,i)=>rrDate(i+1));
+  const results=[];
+  for(let i=0;i<days.length;i+=3){
+   const responses=await Promise.all(days.slice(i,i+3).map(d=>fetch(`${TVMAZE}/schedule/web?date=${d}`)));
+   for(const r of responses)if(r.ok)results.push(...await r.json());
+  }
+  const seen=new Set();const items=results.filter(e=>{if(seen.has(e.id))return false;seen.add(e.id);return true}).sort((a,b)=>(a.airdate||'').localeCompare(b.airdate||'')).slice(0,12);
+  root.innerHTML=items.length?items.map(ep=>rrEpisodeCard(ep,'UPCOMING EPISODE')).join(''):'<p class="empty">No upcoming episodes were returned for the next seven days.</p>';
+ }catch(e){root.innerHTML='<p class="empty">Upcoming episode schedules are unavailable right now. Try again later.</p>';}
+}
+rrLoadUpcomingMovies();rrLoadUpcomingSeries();
 </script>
 </body></html>
