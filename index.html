@@ -135,7 +135,13 @@ img{max-width:100%}
 @media(max-width:699px){#modal .rr-episode-card{display:grid;grid-template-columns:minmax(112px,38%) minmax(0,1fr);gap:12px;padding:13px 0}#modal .rr-episode-thumb{aspect-ratio:16/10}#modal .rr-episode-summary{line-height:1.45;margin:5px 0;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}#modal .rr-episode-content strong{font-size:13px}#modal .rr-episode-more p{font-size:12px}}
 @media(max-width:360px){#modal .rr-episode-card{grid-template-columns:minmax(100px,38%) minmax(0,1fr)}}
 </style>
-</head>
+<style>
+#modal .rr-episode-more summary{line-height:1.6;list-style:none;font-weight:400;color:#d8d7e0;font-size:12px}
+#modal .rr-episode-more summary::-webkit-details-marker{display:none}
+#modal .rr-read-more{color:#ff98ae;font-weight:750;white-space:nowrap}
+#modal .rr-episode-more[open] summary{color:#a9a8b8}
+#modal .rr-episode-more[open] .rr-episode-summary{margin-top:8px}
+</style></head>
 <body>
 <header><div class="nav"><a aria-label="ReelRadar home" class="rr-brand" href="#top"><div class="logo">Reel<span>Radar</span></div></a><button aria-controls="rrMainNav" aria-expanded="false" aria-label="Open navigation" class="rr-menu-toggle" id="rrMenuToggle">☰</button><nav id="rrMainNav"><a href="#trending">Discover</a><a href="#movies">Movies</a><a href="#series">TV Shows</a><a href="#theaters">In Theaters</a><a href="#upcoming-movies">Upcoming Movies</a><a href="#upcoming-series">Upcoming Series</a><a href="#news">News</a><a href="#gossip">Gossip</a><a href="#podcasts">Podcasts</a><a href="#kids">Kids &amp; Family</a><a href="#watchlist">My Watchlist</a></nav><button class="rr-account-trigger" id="rrAccountOpen" type="button">Sign in / Join</button><input aria-label="Search movies and shows" class="search" id="search" placeholder="Search movies &amp; shows…"/></div></header>
 <main id="top">
@@ -326,10 +332,11 @@ async function loadShowExtras(show){
   const [cast,seasons,episodes]=await Promise.all([castR.json(),seasonsR.json(),episodesR.json()]);
   const people=cast.slice(0,12).map(x=>`<div class="rr-person">${x.person?.image?.medium?`<img loading="lazy" src="${rrEscape(x.person.image.medium)}" alt="">`:''}<div><strong>${rrEscape(x.person?.name||'Unknown')}</strong><small>${rrEscape(x.character?.name||'Cast member')}</small></div></div>`).join('');
   const seasonOptions=seasons.map(x=>`<option value="${Number(x.number)}">${Number(x.number)===0?'Specials':'Season '+Number(x.number)} · ${episodes.filter(ep=>ep.season===Number(x.number)).length} episodes</option>`).join('');
-  const html=`<section class="rr-extra"><h3>Cast & characters</h3><div class="rr-people">${people||'<p>Cast unavailable.</p>'}</div><h3>Seasons & episodes</h3>${seasons.length?`<label for="rrSeason">Choose a season</label> <select id="rrSeason" class="rr-select">${seasonOptions}</select><div id="rrEpisodeList"></div>`:'<p>Season information unavailable.</p>'}</section>`;
+  const html=`<section class="rr-extra"><h3>Cast & characters</h3><div class="rr-people">${people||'<p class="small">TVmaze has no cast records for this title. Checking other catalog credits…</p>'}</div><h3>Seasons & episodes</h3>${seasons.length?`<label for="rrSeason">Choose a season</label> <select id="rrSeason" class="rr-select">${seasonOptions}</select><div id="rrEpisodeList"></div>`:'<p>Season information unavailable.</p>'}</section>`;
   showDetailCache.set(showId,html);
   if(!document.getElementById('showExtras')||document.getElementById('showExtras').dataset.show!==String(showId))return;
   target.innerHTML=html;
+  if(!people)rrLoadAlternateCast(show,showId,target);
   const selector=target.querySelector('#rrSeason');
    function renderEpisodes(){
     if(!selector)return;
@@ -339,7 +346,7 @@ async function loadShowExtras(show){
      const name=rrEscape(ep.name&& !/^episode\s*\d+$/i.test(ep.name)?ep.name:`Episode ${ep.number||''}`.trim());
      const image=ep.image?.original||ep.image?.medium||show.backdrop||show.poster||'';
      const summary=String(ep.summary||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
-     const description=summary?`<p class="rr-episode-summary">${rrEscape(summary.length>200?summary.slice(0,200).trimEnd()+'…':summary)}</p>${summary.length>200?`<details class="rr-episode-more"><summary>Read more</summary><p>${rrEscape(summary)}</p></details>`:''}`:'<p class="small">Episode description not available.</p>';
+     const description=summary?(summary.length>145?`<details class="rr-episode-more"><summary>${rrEscape(summary.slice(0,145).trimEnd())}… <span class="rr-read-more">Read full description</span></summary><p class="rr-episode-summary">${rrEscape(summary)}</p></details>`:`<p class="rr-episode-summary">${rrEscape(summary)}</p>`):'<p class="small">Episode description not available.</p>';
      return `<article class="rr-episode rr-episode-card"><div class="rr-episode-thumb">${image?`<img loading="lazy" src="${rrEscape(image)}" alt="${name} episode still" onerror="this.style.display='none';this.nextElementSibling.hidden=false"><span class="rr-episode-fallback" hidden>🎬<small>Episode image unavailable</small></span>`:'<span class="rr-episode-fallback">🎬<small>Episode image unavailable</small></span>'}</div><div class="rr-episode-content"><strong>${ep.number?'E'+Number(ep.number)+' · ':''}${name}</strong><span class="small">${rrEscape(ep.airdate||'Release date TBA')}</span>${description}</div></article>`;
     };
     target.querySelector('#rrEpisodeList').innerHTML=list.length?list.map(episodeHtml).join(''):'<p class="small">No episodes listed for this season.</p>';
@@ -348,6 +355,23 @@ async function loadShowExtras(show){
   target.querySelectorAll('[data-related]').forEach(b=>b.addEventListener('click',()=>openDetail(Number(b.dataset.related))));
  }catch(e){console.warn(e);if(document.getElementById('showExtras')?.dataset.show===String(showId))target.textContent='Could not load cast or episodes. Try opening the title again later.';}
 }
+
+// A second catalog may have cast data even when TVmaze has none.
+async function rrLoadAlternateCast(show,showId,target){
+ const identity=await rrFindProviderId(show);
+ if(!identity||identity.type!=='tv'||target.dataset.show!==String(showId))return;
+ try{
+  // Optional endpoint: if not implemented, leave an accurate missing-data notice.
+  const response=await fetch('/api/credits?type=tv&id='+encodeURIComponent(identity.id));
+  if(!response.ok)return;
+  const data=await response.json();
+  const cast=Array.isArray(data.cast)?data.cast:[];
+  const rows=cast.filter(p=>p&&p.name).slice(0,12).map(p=>`<div class="rr-person">${typeof p.profile_path==='string'&&/^\/[a-zA-Z0-9/_-]+\.(jpg|jpeg|png|webp)$/.test(p.profile_path)?`<img loading="lazy" src="https://image.tmdb.org/t/p/w185${p.profile_path}" alt="">`:''}<div><strong>${rrEscape(p.name)}</strong><small>${rrEscape(p.character||'Cast member')}</small></div></div>`).join('');
+  if(!rows||target.dataset.show!==String(showId))return;
+  const el=target.querySelector('.rr-people');if(el)el.innerHTML=rows;
+ }catch(e){console.warn('Alternative cast unavailable',e);}
+}
+
 const RR_WATCH_KEY='reelradar.watchlist.v1';
 let rrWatchlist=[];
 try{const stored=JSON.parse(localStorage.getItem(RR_WATCH_KEY)||'[]');if(Array.isArray(stored))rrWatchlist=stored.filter(x=>x&&typeof x.key==='string'&&typeof x.title==='string').slice(0,250);}catch(e){console.warn('Watchlist storage unavailable',e);}
@@ -421,7 +445,7 @@ async function rrLoadProviders(title,requestId){
   const groups=[['Stream with subscription',info.flatrate],['Watch free',info.free],['Free with ads',info.ads],['Rent',info.rent],['Buy',info.buy]];
   const sections=groups.map(([heading,items])=>{
    if(!Array.isArray(items)||!items.length)return '';
-   const unique=[...new Map(items.filter(x=>x&&x.provider_name).map(x=>[x.provider_id||x.provider_name,x])).values()];
+   const unique=[...new Map(items.filter(x=>x&&x.provider_name).map(x=>{const name=String(x.provider_name);const family=/^netflix(?:\s|$)/i.test(name)?'Netflix':name;return [family.toLowerCase(),{...x,provider_name:family}];})).values()];
    return `<div class="rr-provider-group"><strong>${heading}</strong><div class="rr-provider-list">${unique.map(x=>{
     const logo=typeof x.logo_path==='string'&&/^\/[a-zA-Z0-9/_-]+\.(png|jpg|jpeg|webp)$/.test(x.logo_path)?`<img loading="lazy" src="https://image.tmdb.org/t/p/w92${x.logo_path}" alt="" width="28" height="28">`:'';
     return `<span class="rr-provider-pill">${logo}${rrEscape(x.provider_name)}</span>`;
@@ -457,12 +481,12 @@ function rrDetailSuggestions(t){
   const regionConflict=targetRegion&&otherRegion&&targetRegion!==otherRegion;
   const strongGenres=['romance','comedy','family','mystery','thriller','fantasy','action','crime','animation'];
   const distinctive=genreTokens(x).filter(g=>targetGenres.includes(g)&&strongGenres.includes(g)).length;
-  const score=shared*12+distinctive*35+(regionMatch?65:0)-(regionConflict?80:0)+(targetYear&&year&&Math.abs(year-targetYear)<=5?3:0)+(x.poster?2:0);
+  const score=shared*12+distinctive*35+(regionMatch?95:0)-(regionConflict?120:0)+(targetYear&&year&&Math.abs(year-targetYear)<=5?3:0)+(x.poster?2:0);
   return {x,score,shared,regionConflict};
  }).filter(Boolean);
  // Require meaningful genre overlap; don't suggest unrelated shows merely because their titles contain the same word.
- const matches=scored.filter(v=>v.shared>0&&!v.regionConflict&&v.score>=45).sort((a,b)=>b.score-a.score).slice(0,8).map(v=>v.x);
- return `<section class="rr-detail-block"><h3>More like this</h3>${matches.length?`<div class="rr-recommend-grid">${matches.map(x=>`<button class="rr-recommend-card" type="button" data-suggest-key="${rrEscape(rrTitleKey(x))}">${x.poster?`<img loading="lazy" src="${rrEscape(x.poster)}" alt="${rrEscape(x.title)} poster">`:'<span class="rr-recommend-placeholder">🎬</span>'}<strong>${rrEscape(x.title)}</strong><small>${rrEscape(x.year)} · ${rrEscape(x.genre||x.type)}</small></button>`).join('')}</div><p class="rr-detail-note">Suggestions prioritize matching genres, language or country when known, and release years. Availability depends on loaded titles.</p>`:'<p class="rr-detail-note">No closely related titles are available in the loaded catalog yet.</p>'}</section>`;
+ const matches=scored.filter(v=>v.shared>0&&!v.regionConflict&&v.score>=55).sort((a,b)=>b.score-a.score).slice(0,8).map(v=>v.x);
+ return `<section class="rr-detail-block"><h3>More like this</h3>${matches.length?`<div class="rr-recommend-grid">${matches.map(x=>`<button class="rr-recommend-card" type="button" data-suggest-key="${rrEscape(rrTitleKey(x))}">${x.poster?`<img loading="lazy" src="${rrEscape(x.poster)}" alt="${rrEscape(x.title)} poster">`:'<span class="rr-recommend-placeholder">🎬</span>'}<strong>${rrEscape(x.title)}</strong><small>${rrEscape(x.year)} · ${rrEscape(x.genre||x.type)}</small></button>`).join('')}</div><p class="rr-detail-note">Suggestions prioritize matching genres, language or country when known, and release years. Availability depends on loaded titles.</p>`:'<p class="rr-detail-note">No close matches found in the loaded catalog. Try another title or browse more shows.</p>'}</section>`;
 }
 
 async function rrFindTVmazeDetail(t){
