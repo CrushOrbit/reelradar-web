@@ -102,7 +102,7 @@ main{max-width:1380px}.rr-quick-nav{display:flex;gap:10px;overflow-x:auto;scroll
 #modal .rr-watch-fallback{margin-top:16px}
 #modal .rr-watch-fallback>a{display:inline-block;padding:10px 15px;border:1px solid #ff7192;border-radius:10px;color:#ffb3c5;text-decoration:none;font-weight:650}
 </style>
-</head>
+<style>/* Detail improvements */#modal .rr-facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:10px;margin:18px 0}#modal .rr-fact{background:#242432;border:1px solid #444456;border-radius:12px;padding:12px}#modal .rr-fact small{display:block;color:#b4b6c6;margin-bottom:6px}#modal .rr-related-btn:hover{border-color:#fa365f}#modal .rr-people{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}@media(max-width:650px){#modal .rr-facts{grid-template-columns:repeat(2,minmax(0,1fr))}}</style></head>
 <body>
 <header><div class="nav"><a aria-label="ReelRadar home" class="rr-brand" href="#top"><div class="logo">Reel<span>Radar</span></div></a><button aria-controls="rrMainNav" aria-expanded="false" aria-label="Open navigation" class="rr-menu-toggle" id="rrMenuToggle">☰</button><nav id="rrMainNav"><a href="#trending">Discover</a><a href="#movies">Movies</a><a href="#series">TV Shows</a><a href="#theaters">In Theaters</a><a href="#upcoming-movies">Upcoming Movies</a><a href="#upcoming-series">Upcoming Series</a><a href="#news">News</a><a href="#gossip">Gossip</a><a href="#podcasts">Podcasts</a><a href="#kids">Kids &amp; Family</a><a href="#watchlist">My Watchlist</a></nav><button class="rr-account-trigger" id="rrAccountOpen" type="button">Sign in / Join</button><input aria-label="Search movies and shows" class="search" id="search" placeholder="Search movies &amp; shows…"/></div></header>
 <main id="top">
@@ -285,7 +285,7 @@ function rrSafeLink(url){try{const u=new URL(url);return ['https:','http:'].incl
 async function loadShowExtras(show){
  const target=document.getElementById('showExtras');if(!target||!show.tvmazeId)return;
  const showId=show.tvmazeId;
- if(showDetailCache.has(showId)){target.innerHTML=showDetailCache.get(showId);return;}
+ // Refresh episode event handlers whenever details open.
  try{
   const [castR,seasonsR,episodesR]=await Promise.all([
    fetch(`${TVMAZE}/shows/${showId}/cast`),fetch(`${TVMAZE}/shows/${showId}/seasons`),fetch(`${TVMAZE}/shows/${showId}/episodes`)]);
@@ -386,6 +386,29 @@ async function rrLoadProviders(title,requestId){
   if(isCurrent())target.innerHTML='<p class="small">Streaming availability could not be checked right now.</p>'+fallback;
  }
 }
+
+function rrDetailSuggestions(t){
+ const genres=String(t.genre||'').split(' · ').filter(x=>x.length>2);
+ const matches=titles.filter(x=>x.id!==t.id&&x.type===t.type&&genres.some(g=>String(x.genre||'').split(' · ').includes(g))).slice(0,6);
+ return matches.length?`<section class="rr-detail-block"><h3>More like this</h3><div class="rr-related">${matches.map(x=>`<button type="button" class="rr-related-btn" data-suggest-id="${Number(x.id)}">${rrEscape(x.title)} · ${rrEscape(x.year)}</button>`).join('')}</div><p class="rr-detail-note">Suggested using shared genres from currently loaded titles.</p></section>`:'';
+}
+async function rrFindTVmazeDetail(t){
+ const panel=document.getElementById('showExtras');
+ if(!panel)return;
+ const key=rrTitleKey(t);
+ try{
+  const r=await fetch(`${TVMAZE}/search/shows?q=${encodeURIComponent(t.title)}`);
+  if(!r.ok)throw Error('TVmaze lookup failed');
+  const shows=(await r.json()).map(x=>x.show).filter(x=>rrNormalizedTitle(x.name)===rrNormalizedTitle(t.title));
+  const match=shows.find(x=>String(x.premiered||'').slice(0,4)===String(t.year))||(shows.length===1?shows[0]:null);
+  if(panel.dataset.lookup!==key)return;
+  if(!match){panel.textContent='Cast and episode information is not listed for this title in TVmaze.';return;}
+  t.tvmazeId=match.id;
+  panel.dataset.show=String(match.id);
+  loadShowExtras(t);
+ }catch(e){if(panel.dataset.lookup===key)panel.textContent='Series details could not be loaded right now.';}
+}
+
 function openDetail(id){
  const t=titles.find(x=>x.id===id);if(!t)return;
  const safeTitle=rrEscape(t.title);
@@ -400,6 +423,7 @@ function openDetail(id){
  <div class="eyebrow">${rrEscape(t.type||'Title')} · ReelRadar details</div>
  <h2>${safeTitle}</h2>
  <div class="rr-detail-tags">${tags.map(tag=>`<span>${rrEscape(String(tag))}</span>`).join('')}</div>
+ <div class="rr-facts"><div class="rr-fact"><small>Release year</small><strong>${rrEscape(t.year||'Unknown')}</strong></div><div class="rr-fact"><small>Format</small><strong>${rrEscape(t.type||'Unknown')}</strong></div><div class="rr-fact"><small>Genres</small><strong>${rrEscape(t.genre||'Not listed')}</strong></div><div class="rr-fact"><small>Rating</small><strong>${t.rating&&t.rating!=='N/A'?'★ '+rrEscape(t.rating):'Not available'}</strong></div></div>
  <p class="rr-detail-summary">${rrEscape(t.synopsis||'A full synopsis is not yet available for this title.')}</p>
  <div class="rr-detail-actions">
  <button class="btn" id="rrDetailSave" type="button">${rrIsSaved(t)?'♥ Saved to watchlist':'♡ Add to watchlist'}</button>
@@ -407,10 +431,12 @@ function openDetail(id){
  </div>
  <section class="rr-detail-block"><h3>Where to watch</h3><div id="rrProviderResults" aria-live="polite">${providerIntro}</div><p class="rr-detail-note">Streaming options vary by location and may change. Check the provider before subscribing.</p></section>
  ${t.wikidataId?`<section class="rr-detail-block"><h3>Cast &amp; credits</h3><div id="movieCredits" data-movie="${rrEscape(t.wikidataId)}" class="small">Loading credits…</div></section>`:''}
+ ${rrDetailSuggestions(t)}
+ <p class="rr-detail-note">Catalog source: ${rrEscape(t.source||'ReelRadar')}. Details vary by source.</p>
  ${t.externalUrl?`<p class="rr-detail-note"><a href="${rrSafeLink(t.externalUrl)}" target="_blank" rel="noopener noreferrer">More title information ↗</a></p>`:''}
  ${t.imageCredit?`<p class="rr-detail-note">Image: ${rrEscape(t.imageCredit.author)} · ${rrEscape(t.imageCredit.license)} · <a href="${rrSafeLink(t.imageCredit.page)}" target="_blank" rel="noopener noreferrer">Attribution ↗</a></p>`:''}
  <p class="rr-detail-note">Trailer link searches YouTube; videos are not verified or embedded by ReelRadar.</p>
- </div></div>${t.tvmazeId?`<div id="showExtras" data-show="${t.tvmazeId}" class="rr-extra">Loading cast, seasons and episodes…</div>`:''}`;
+ </div></div>${t.type!=='Movie'?`<div id="showExtras" data-show="${t.tvmazeId||''}" data-lookup="${rrEscape(rrTitleKey(t))}" class="rr-extra">Loading cast, seasons and episodes…</div>`:''}`;
  document.getElementById('modal').classList.add('open');
  document.getElementById('rrDetailSave').addEventListener('click',()=>{rrToggleSaved(t);const button=document.getElementById('rrDetailSave');if(button)button.textContent=rrIsSaved(t)?'♥ Saved to watchlist':'♡ Add to watchlist';});
  rrUpdateSaveButton(t);
@@ -418,6 +444,8 @@ function openDetail(id){
  rrLoadProviders(t,providerRequestId);
  if(t.wikidataId)loadMovieCredits(t);
  if(t.tvmazeId)loadShowExtras(t);
+ else if(t.type!=='Movie')rrFindTVmazeDetail(t);
+ document.querySelectorAll('#detail [data-suggest-id]').forEach(b=>b.addEventListener('click',()=>openDetail(Number(b.dataset.suggestId))));
 }
 
 document.getElementById('rrExpand').addEventListener('click',()=>{const modal=document.getElementById('modal');const expanded=modal.classList.toggle('rr-fullscreen');const b=document.getElementById('rrExpand');b.setAttribute('aria-pressed',String(expanded));b.textContent=expanded?'⤡ Exit full screen':'⛶ Full screen';});
