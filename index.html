@@ -105,7 +105,7 @@ async function loadTVmazeShows(){try{const response=await fetch(`${TVMAZE}/shows
 async function searchTVmaze(query,requestId){try{const response=await fetch(`${TVMAZE}/search/shows?q=${encodeURIComponent(query)}`);if(!response.ok)throw new Error('TVmaze search failed');const results=await response.json();if(requestId!==searchRequest)return;return results.map(x=>fromTVmaze(x.show));}catch(error){console.warn('TVmaze search failed.',error);return [];}}
 function rrEscape(value){return String(value||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function rrDate(offset=0){const d=new Date();d.setDate(d.getDate()+offset);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
-function rrEpisodeCard(ep,label){const show=ep.show||{};const image=(ep.image&&(ep.image.medium||ep.image.original))||(show.image&&(show.image.medium||show.image.original));const season=ep.season?`S${ep.season}`:'';const number=ep.number?`E${ep.number}`:'';return `<article class="feature-card">${image?`<img src="${rrEscape(image)}" alt="" style="width:100%;max-height:155px;object-fit:cover;border-radius:8px;margin-bottom:10px" onerror="this.outerHTML='<div class=&quot;poster-placeholder&quot;>🎬</div>'">`:''}<span class="feature-label">${label}</span><h3>${rrEscape(show.name||'TV episode')}</h3><p><strong>${rrEscape(ep.name||'Episode')}</strong>${season||number?` · ${rrEscape(season)}${rrEscape(number)}`:''}<br>${rrEscape(ep.airdate||'Date TBA')}${ep.airtime?` · ${rrEscape(ep.airtime)}`:''}${show.network&&show.network.name?`<br>${rrEscape(show.network.name)}`:''}${show.webChannel&&show.webChannel.name?`<br>${rrEscape(show.webChannel.name)}`:''}</p>${ep.url?`<a href="${rrEscape(ep.url)}" target="_blank" rel="noopener" style="color:#ff8aa0">View episode details ↗</a>`:''}</article>`;}
+function rrEpisodeCard(ep,label){const show=ep.show||ep._embedded?.show||{};const image=(ep.image&&(ep.image.medium||ep.image.original))||(show.image&&(show.image.medium||show.image.original));const season=ep.season?`S${ep.season}`:'';const number=ep.number?`E${ep.number}`:'';return `<article class="feature-card">${image?`<img src="${rrEscape(image)}" alt="" style="width:100%;max-height:155px;object-fit:cover;border-radius:8px;margin-bottom:10px" onerror="this.outerHTML='<div class=&quot;poster-placeholder&quot;>🎬</div>'">`:''}<span class="feature-label">${label}</span><h3>${rrEscape(show.name||ep.name||'Series title unavailable')}</h3><p><strong>${rrEscape(ep.name||'Episode')}</strong>${season||number?` · ${rrEscape(season)}${rrEscape(number)}`:''}<br>${rrEscape(ep.airdate||'Date TBA')}${ep.airtime?` · ${rrEscape(ep.airtime)}`:''}${show.network&&show.network.name?`<br>${rrEscape(show.network.name)}`:''}${show.webChannel&&show.webChannel.name?`<br>${rrEscape(show.webChannel.name)}`:''}</p>${ep.url?`<a href="${rrEscape(ep.url)}" target="_blank" rel="noopener" style="color:#ff8aa0">View episode details ↗</a>`:''}</article>`;}
 async function loadTVSchedules(){const todayBox=document.getElementById('upcomingSeriesList');const recentBox=document.getElementById('updatesList');try{const today=rrDate();const urls=[`${TVMAZE}/schedule?country=US&date=${today}`,`${TVMAZE}/schedule/web?date=${today}`];const responses=await Promise.all(urls.map(url=>fetch(url)));if(responses.some(r=>!r.ok))throw new Error('TV schedule unavailable');let episodes=[];for(const r of responses)episodes.push(...await r.json());const seen=new Set();episodes=episodes.filter(ep=>{if(seen.has(ep.id))return false;seen.add(ep.id);return true;}).sort((a,b)=>(a.airtime||'').localeCompare(b.airtime||''));todayBox.innerHTML=episodes.length?episodes.slice(0,9).map(ep=>rrEpisodeCard(ep,'AIRING TODAY')).join(''):'<p class="empty">TVmaze has no episodes listed for today. Try again later.</p>';const dates=[rrDate(-1),rrDate(-2)];const pastResponses=await Promise.all(dates.map(d=>fetch(`${TVMAZE}/schedule?country=US&date=${d}`)));let past=[];for(const r of pastResponses){if(r.ok)past.push(...await r.json());}const pastSeen=new Set();past=past.filter(ep=>{if(pastSeen.has(ep.id))return false;pastSeen.add(ep.id);return true;}).sort((a,b)=>(b.airdate||'').localeCompare(a.airdate||'')).slice(0,6);recentBox.innerHTML=past.length?past.map(ep=>rrEpisodeCard(ep,'RECENT')).join(''):'<p class="empty">No recent episodes were returned for the last two days.</p>';}catch(err){console.warn('Could not load TVmaze schedules',err);todayBox.innerHTML='<p class="empty">Could not load the live schedule. Check your connection and reload.</p>';recentBox.innerHTML='<p class="empty">Could not load recent episodes right now.</p>';}}
 // Wikidata structured metadata is CC0. Search results do not reuse third-party posters or ratings.
 const WIKIDATA='https://www.wikidata.org/w/api.php';
@@ -333,7 +333,7 @@ function featureCards(id,items){document.getElementById(id).innerHTML=items.map(
 async function rrLoadTheaters(){
  const root=document.getElementById('theatersList'),status=document.getElementById('rrTheaterStatus');
  try{
-  const r=await fetch('/api/theatrical?type=now_playing');
+  const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),12000);let r;try{r=await fetch('/api/theatrical?type=now_playing',{signal:controller.signal});}finally{clearTimeout(timer);}
   if(!r.ok)throw Error('Now-playing endpoint unavailable');
   const data=await r.json();
   if(!Array.isArray(data.results))throw Error('Invalid now-playing response');
@@ -373,7 +373,7 @@ async function rrLoadKids(){
 }
 
 // Homepage discovery. Curated selections are editorial examples, not a popularity ranking.
-const rrHomeGroups={preschool:['Bluey','Peppa Pig','Daniel Tiger’s Neighborhood','Paw Patrol','Hey Duggee','Gabby’s Dollhouse','Mickey Mouse Clubhouse'],animation:['Bluey','Adventure Time','The Amazing World of Gumball','SpongeBob SquarePants','Avatar: The Last Airbender','The Loud House'],educational:['Sesame Street','The Magic School Bus','Wild Kratts','Numberblocks','StoryBots','Octonauts','Arthur'],teen:['Heartstopper','The Baby-Sitters Club','Julie and the Phantoms']};
+const rrHomeGroups={preschool:['Bluey','Peppa Pig','Daniel Tiger’s Neighborhood','Paw Patrol','Hey Duggee','Gabby’s Dollhouse','Mickey Mouse Clubhouse'],animation:['Bluey','Adventure Time','The Amazing World of Gumball','SpongeBob SquarePants','Avatar: The Last Airbender','The Loud House'],educational:['Sesame Street','The Magic School Bus','Wild Kratts','Numberblocks','StoryBots','Octonauts','Arthur'],teen:['The Baby-Sitters Club','Julie and the Phantoms','The Next Step']};
 const rrKoreanNames=['Queen of Tears','Business Proposal','Crash Landing on You','Hometown Cha-Cha-Cha','Extraordinary Attorney Woo'];
 async function rrExactShow(name){
  try{const r=await fetch(`${TVMAZE}/search/shows?q=${encodeURIComponent(name)}`);if(!r.ok)throw Error('TVmaze '+r.status);const data=await r.json();const norm=x=>String(x).toLowerCase().replace(/[^a-z0-9]/g,'');const hit=data.find(x=>norm(x.show.name)===norm(name));return hit?fromTVmaze(hit.show):null}catch(e){console.warn('TVmaze discovery failed:',name,e);return null;}
@@ -391,18 +391,40 @@ function rrPaintFamily(){
  for(const k of groups){const el=root.querySelector(`[data-family="${k}"]`);const items=rrFamilyData[k]||[];el.innerHTML=items.length?items.map(rrCardHtml).join(''):'<p class="empty">No titles available.</p>';rrWireCards(el,items);}
 }
 async function rrLoadHome(){
- const movies=titles.filter(x=>x.type==='Movie').slice(0,10);rrPaintCards('rrMoviePicks',movies,'Search above to discover movie records.');
  const allNames=[...new Set([...Object.values(rrHomeGroups).flat(),...rrKoreanNames,'The Rookie','The Last of Us','The Bear','Abbott Elementary','Only Murders in the Building'])];
- // Avoid firing dozens of requests at once; TVmaze applies rate limits.
- const found=new Map();for(let i=0;i<allNames.length;i+=4){const batch=await Promise.all(allNames.slice(i,i+4).map(async name=>[name,await rrExactShow(name)]));for(const [name,show] of batch)if(show&&rrNormalizedTitle(show.title)===rrNormalizedTitle(name))found.set(name,show);}
- const tv=['The Rookie','The Last of Us','The Bear','Abbott Elementary','Only Murders in the Building'].map(x=>found.get(x)).filter(Boolean);
- rrPaintCards('rrTvPicks',tv,'TV series are unavailable. Check your connection.');
- rrPaintCards('rrKdramaPicks',rrKoreanNames.map(x=>found.get(x)).filter(Boolean),'K-Drama data is unavailable right now.');
- for(const [group,names] of Object.entries(rrHomeGroups))rrFamilyData[group]=names.map(x=>found.get(x)).filter(Boolean);
- // Family movies are illustrative only; no age certification is implied.
- rrFamilyData.family=titles.filter(x=>x.type==='Movie'&&['Inside Out 2','Spider-Man: Across the Spider-Verse'].includes(x.title));
- rrPaintFamily();
+ const found=new Map();
+ // Fetch in small batches and publish results incrementally so children never see empty panels while waiting.
+ for(let i=0;i<allNames.length;i+=4){
+  const batch=await Promise.all(allNames.slice(i,i+4).map(async name=>[name,await rrExactShow(name)]));
+  for(const [name,show] of batch)if(show&&rrNormalizedTitle(show.title)===rrNormalizedTitle(name))found.set(name,show);
+  for(const [group,names] of Object.entries(rrHomeGroups)){
+   rrFamilyData[group]=names.map(x=>found.get(x)).filter(Boolean);
+  }
+  rrPaintFamily();
+ }
+ rrPaintCards('rrTvPicks',['The Rookie','The Last of Us','The Bear','Abbott Elementary','Only Murders in the Building'].map(x=>found.get(x)).filter(Boolean));
+ rrPaintCards('rrKdramaPicks',rrKoreanNames.map(x=>found.get(x)).filter(Boolean));
 }
+const RR_FAMILY_MOVIE_QUERIES=['Toy Story','Finding Nemo','Moana','Encanto','Frozen','Coco','Inside Out','Paddington','Zootopia','Luca','Cars','Ratatouille'];
+async function rrLoadFamilyMovies(){
+ const found=[];
+ for(let i=0;i<RR_FAMILY_MOVIE_QUERIES.length;i+=3){
+  const batch=await Promise.all(RR_FAMILY_MOVIE_QUERIES.slice(i,i+3).map(async name=>{
+   try{
+    const response=await fetch('/api/movies?query='+encodeURIComponent(name));
+    if(!response.ok)return null;
+    const data=await response.json();
+    const exact=(data.results||[]).find(x=>x.media_type==='movie'&&rrNormalizedTitle(x.title)===rrNormalizedTitle(name)&&RR_SAFE_FAMILY_MOVIES.has(rrNormalizedTitle(x.title)));
+    return exact?rrGlobalFromApi(exact):null;
+   }catch{return null;}
+  }));
+  for(const item of batch)if(item&&!found.some(x=>rrTitleKey(x)===rrTitleKey(item)))found.push(item);
+  rrFamilyData.family=found.slice(0,12);
+  for(const item of found)if(!titles.some(x=>rrTitleKey(x)===rrTitleKey(item)))titles.push(item);
+  rrPaintFamily();
+ }
+}
+
 const rrAgeSelect=document.getElementById('rrAge'),rrHideTeen=document.getElementById('rrHideTeen');
 try{rrHideTeen.checked=localStorage.getItem('rr-hide-teen')==='yes'}catch(e){}
 rrAgeSelect.addEventListener('change',rrPaintFamily);
@@ -501,11 +523,11 @@ async function rrLoadGlobalDiscovery(){
   render();
  }
  // Keep the existing Kids & Family browsing controls, now with live movie titles.
- rrFamilyData.family=all.filter(x=>x.type==='Movie'&&RR_SAFE_FAMILY_MOVIES.has(rrNormalizedTitle(x.title))).slice(0,6);
+ rrFamilyData.family=[...rrFamilyData.family||[],...all.filter(x=>x.type==='Movie'&&RR_SAFE_FAMILY_MOVIES.has(rrNormalizedTitle(x.title)))].filter((x,i,a)=>a.findIndex(y=>rrTitleKey(y)===rrTitleKey(x))===i).slice(0,12);
  rrPaintFamily();
 }
 
-rrLoadGlobalDiscovery();
+rrPaintFamily();\nrrLoadHome();\nrrLoadFamilyMovies();\nrrLoadGlobalDiscovery();
 </script>
 <script>
 (function(){
@@ -601,21 +623,33 @@ async function rrLoadUpcomingMovies(){
   for(const t of items)if(!titles.some(x=>rrTitleKey(x)===rrTitleKey(t)))titles.push(t);
   root.innerHTML=items.length?items.map(t=>`<div><div class="small" style="margin-bottom:7px;color:#ff9db2">Releases ${rrEscape(t.releaseDate)}</div>${rrCardHtml(t)}</div>`).join(''):'<p class="empty">No verified upcoming release dates were returned.</p>';
   rrWireCards(root,items);
- }catch(e){root.innerHTML='<article class="feature-card"><span class="feature-label">RELEASE CALENDAR</span><h3>Upcoming movies</h3><p>Upcoming release data is temporarily unavailable. We won’t display invented dates or old sample movies.</p><p><a href="https://www.themoviedb.org/movie/upcoming" target="_blank" rel="noopener noreferrer" style="color:#ff9db2">Browse upcoming movie releases ↗</a></p></article>';}
+ }catch(e){root.innerHTML='<article class="feature-card"><span class="feature-label">RELEASE CALENDAR</span><h3>Upcoming movies</h3><p>Upcoming release data is unavailable from the theatrical API. We won’t display invented dates or old sample movies.</p><p><a href="https://www.themoviedb.org/movie/upcoming" target="_blank" rel="noopener noreferrer" style="color:#ff9db2">Browse upcoming movie releases ↗</a></p></article>';}
 }
 async function rrLoadUpcomingSeries(){
  const root=document.getElementById('rrUpcomingSeries');
+ const days=Array.from({length:7},(_,i)=>rrDate(i+1));
+ const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),16000);
  try{
-  const days=Array.from({length:7},(_,i)=>rrDate(i+1));
-  const results=[];
-  for(let i=0;i<days.length;i+=3){
-   const responses=await Promise.all(days.slice(i,i+3).map(d=>fetch(`${TVMAZE}/schedule/web?date=${d}`)));
-   for(const r of responses)if(r.ok)results.push(...await r.json());
-  }
-  const seen=new Set();const items=results.filter(e=>{if(seen.has(e.id))return false;seen.add(e.id);return true}).sort((a,b)=>(a.airdate||'').localeCompare(b.airdate||'')).slice(0,12);
-  root.innerHTML=items.length?items.map(ep=>rrEpisodeCard(ep,'UPCOMING EPISODE')).join(''):'<p class="empty">No upcoming episodes were returned for the next seven days.</p>';
- }catch(e){root.innerHTML='<p class="empty">Upcoming episode schedules are unavailable right now. Try again later.</p>';}
+  const urls=days.flatMap(d=>[`${TVMAZE}/schedule/web?date=${d}`,`${TVMAZE}/schedule?country=US&date=${d}`]);
+  const responses=await Promise.allSettled(urls.map(u=>fetch(u,{signal:controller.signal})));
+  let episodes=[];
+  for(const result of responses){if(result.status==='fulfilled'&&result.value.ok){try{const rows=await result.value.json();if(Array.isArray(rows))episodes.push(...rows);}catch{}}}
+  const seen=new Set();
+  episodes=episodes.filter(ep=>{if(!ep?.id||seen.has(ep.id))return false;seen.add(ep.id);return true;});
+  // Resolve missing series information using the linked TVmaze show ID.
+  const missing=[...new Set(episodes.filter(e=>!(e.show||e._embedded?.show)?.name).map(e=>e._links?.show?.href).filter(Boolean))].slice(0,30);
+  const showCache=new Map();
+  await Promise.all(missing.map(async url=>{try{const r=await fetch(url,{signal:controller.signal});if(r.ok)showCache.set(url,await r.json());}catch{}}));
+  for(const ep of episodes){if(!ep.show&&!ep._embedded?.show)ep.show=showCache.get(ep._links?.show?.href)||null;}
+  episodes=episodes.filter(ep=>(ep.show||ep._embedded?.show)?.name)
+   .sort((a,b)=>(a.airdate||'').localeCompare(b.airdate||'')||(b.show?.rating?.average||0)-(a.show?.rating?.average||0));
+  // Favor recognizable, well-described series rather than multiple episodes of one obscure show.
+  const byShow=new Set();const chosen=[];
+  for(const ep of episodes){const show=ep.show||ep._embedded?.show;const key=show.id||show.name;if(byShow.has(key))continue;byShow.add(key);chosen.push(ep);if(chosen.length===18)break;}
+  root.innerHTML=chosen.length?chosen.map(ep=>rrEpisodeCard(ep,'UPCOMING EPISODE')).join(''):'<p class="empty">No upcoming series with confirmed names were returned for the next seven days.</p>';
+ }catch(e){root.innerHTML='<p class="empty">Upcoming episode schedules are temporarily unavailable. Please retry later.</p>';}finally{clearTimeout(timer);}
 }
+
 rrLoadUpcomingMovies();rrLoadUpcomingSeries();
 </script>
 <script>(function(){
