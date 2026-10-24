@@ -841,8 +841,9 @@ rrLoadGlobalDiscovery();
 <div class="rr-auth-tabs"><button aria-pressed="true" class="rr-auth-tab active" data-auth-mode="signin" type="button">Sign in</button><button aria-pressed="false" class="rr-auth-tab" data-auth-mode="signup" type="button">Create account</button></div>
 <form autocomplete="off" class="rr-auth-form" id="rrAuthForm">
 
-<div id="rrSignupSafeguards" hidden><p class="rr-auth-note">Only your email and password are needed. A private, editable username will be generated automatically.</p><label class="rr-consent-check"><input type="checkbox" id="rrSignupTerms"/> <span>I agree to the <button type="button" data-rr-legal="terms">Terms of Service</button> and acknowledge the <button type="button" data-rr-legal="privacy">Privacy Policy</button>.</span></label></div><label>Email<input autocomplete="email" id="rrAuthEmail" name="email" placeholder="you@example.com" required="" type="email"/></label>
+<label>Email<input autocomplete="email" id="rrAuthEmail" name="email" placeholder="you@example.com" required="" type="email"/></label>
 <label>Password<input autocomplete="current-password" id="rrAuthPassword" minlength="8" name="password" placeholder="At least 8 characters" required="" type="password"/></label>
+<div id="rrSignupSafeguards" hidden><label class="rr-consent-check"><input type="checkbox" id="rrSignupTerms"/> <span>I agree to the <button type="button" data-rr-legal="terms">Terms of Service</button> and acknowledge the <button type="button" data-rr-legal="privacy">Privacy Policy</button>.</span></label></div>
 <button class="btn rr-auth-submit" id="rrAuthSubmit" type="submit">Sign in</button>
 </form>
 <div class="rr-auth-divider">or</div>
