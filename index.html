@@ -789,7 +789,7 @@ async function rrLoadGlobalDiscovery(){
     if(!t||!t.poster||seen.has(rrTitleKey(t)))return false;
     seen.add(rrTitleKey(t));return true;
    }).slice(0,10);
-   if(!items.length){panel.innerHTML='<p class="empty">No titles available in this collection right now.</p>';return;}
+   if(!items.length){panel.innerHTML='<p class="empty">No titles were returned by the discovery service.</p>';return;}
    // Keep the movie registry available to the existing details and watchlist handlers.
    for(const t of items){if(!all.some(x=>rrTitleKey(x)===rrTitleKey(t)))all.push(t);}
    panel.innerHTML=items.map(rrCardHtml).join('');
@@ -947,18 +947,21 @@ rrLoadUpcomingMovies();rrLoadUpcomingSeries();
  const pageForHash=()=>{const h=decodeURIComponent(location.hash.slice(1));return pages.has(h)?h:(aliases[h]||'home');};
  const panels=[...document.querySelectorAll('[data-rr-page]')];
  function populateBrowse(){
-   const all=typeof rrGlobalTitles!=='undefined'&&Array.isArray(rrGlobalTitles)?rrGlobalTitles:[];
-   for(const [name,id] of [['movies','rrPageGridMovies'],['series','rrPageGridSeries']]){
-     const el=document.getElementById(id);if(!el)return;
-     const items=all.filter(x=>name==='movies'?x.type==='Movie':x.type!=='Movie').slice(0,30);
-     if(items.length&&typeof rrCardHtml==='function'){
-       el.innerHTML=items.map(rrCardHtml).join('');
-       if(typeof rrWireCards==='function')rrWireCards(el,items);
-       const note=el.nextElementSibling;if(note)note.textContent='Live discovery titles · Select a poster for details and availability.';
-     }else if(name==='series'&&typeof tvmazeTitles!=='undefined'&&tvmazeTitles.length&&typeof rrCardHtml==='function'){
-       el.innerHTML=tvmazeTitles.slice(0,24).map(rrCardHtml).join('');rrWireCards(el,tvmazeTitles.slice(0,24));
-     }
-   }
+  const all=typeof rrGlobalTitles!=='undefined'&&Array.isArray(rrGlobalTitles)?rrGlobalTitles:[];
+  for(const [name,id] of [['movies','rrPageGridMovies'],['series','rrPageGridSeries']]){
+   const el=document.getElementById(id);if(!el)continue;
+   let items=all.filter(x=>name==='movies'?x.type==='Movie':x.type!=='Movie').slice(0,30);
+   if(name==='series'&&!items.length&&typeof tvmazeTitles!=='undefined')items=tvmazeTitles.slice(0,24);
+   const note=el.nextElementSibling;
+   if(items.length&&typeof rrCardHtml==='function'){
+    el.innerHTML=items.map(rrCardHtml).join('');rrWireCards(el,items);
+    if(note)note.textContent='Live discovery titles · Select a poster for details and availability.';
+   }else if(typeof rrGlobalReady!=='undefined'&&rrGlobalReady){
+    el.innerHTML='<p class="empty" role="status">No titles returned from the live catalog. Try searching above or retry discovery.</p>';
+    if(note){note.innerHTML='Discovery service unavailable. <button class="chip" type="button">Retry discovery</button>';
+     note.querySelector('button').addEventListener('click',()=>{note.textContent='Retrying live discovery…';rrLoadGlobalDiscovery();});}
+   }else if(note)note.textContent='Loading live discoveries…';
+  }
  }
  function navigate(){
    const page=pageForHash();
@@ -980,6 +983,7 @@ rrLoadUpcomingMovies();rrLoadUpcomingSeries();
  search?.addEventListener('input',()=>{if(search.value.trim().length>=2&&pageForHash()!=='home')location.hash='home';});
  const global=document.getElementById('rrGlobalDiscovery');
  if(global&&typeof MutationObserver!=='undefined')new MutationObserver(()=>{if(pageForHash()==='movies'||pageForHash()==='series')populateBrowse();}).observe(global,{childList:true});
+ window.addEventListener('rr-global-discovery-ready',populateBrowse);
  navigate();
 })();</script><footer class="rr-legal-footer" aria-label="Legal and privacy information"><span>© ReelRadar · Development prototype</span><button type="button" data-rr-legal="privacy">Privacy Policy</button><button type="button" data-rr-legal="terms">Terms of Service</button><button type="button" data-rr-legal="cookies">Cookie Policy</button><button type="button" data-rr-legal="refunds">Refund Policy</button><button type="button" id="rrCookieManage">Cookie Preferences</button></footer>
 <dialog id="rrLegalDialog" aria-labelledby="rrLegalHeading"><h2 id="rrLegalHeading"></h2><div id="rrLegalBody"></div><button id="rrLegalClose" type="button">Close</button></dialog>
