@@ -48,7 +48,7 @@ main{max-width:1380px}.rr-quick-nav{display:flex;gap:10px;overflow-x:auto;scroll
 .rr-google-btn:hover{background:#f1f3f4}.rr-google-btn:disabled{opacity:.55;cursor:wait}
 .rr-auth-divider{display:flex;align-items:center;gap:12px;color:#b7b7c6;font-size:12px;margin:16px 0}.rr-auth-divider:before,.rr-auth-divider:after{content:"";height:1px;background:#414152;flex:1}
 
-/* ReelRadar Global Discovery */\n.rr-mature-rating{font-size:12px;color:#ffc0ce;line-height:1.45;margin:8px 0 4px}.rr-mature-card{min-width:0}.rr-mature-film{min-width:0;background:#191923;border:1px solid #454052;border-radius:13px;padding:14px}.rr-mature-film h3{font-size:15px;margin:9px 0 6px}.rr-mature-film-icon{display:grid;place-items:center;aspect-ratio:2/2.3;background:linear-gradient(135deg,#302536,#171720);border-radius:10px;font-size:40px}.rr-mature-film .rr-action{font-size:12px;margin-top:10px}
+/* ReelRadar Global Discovery */\n.rr-mature-rating{font-size:12px;color:#ffc0ce;line-height:1.45;margin:8px 0 4px}.rr-mature-card{min-width:0}.rr-mature-film{min-width:0;background:#191923;border:1px solid #454052;border-radius:13px;padding:14px}.rr-mature-film h3{font-size:15px;margin:9px 0 6px}.rr-mature-film-icon{display:grid;place-items:center;aspect-ratio:2/2.3;background:linear-gradient(135deg,#302536,#171720);border-radius:10px;font-size:40px}.rr-mature-film .rr-action{font-size:12px;margin-top:10px}.rr-mature-film-icon img{width:100%;height:100%;object-fit:cover;border-radius:10px}.rr-mature-film .rr-action:disabled{opacity:.6;cursor:wait}
 .rr-global-nav{display:flex;gap:9px;overflow-x:auto;padding:13px 0 20px;scrollbar-width:none}
 .rr-global-nav a{white-space:nowrap;background:#211b2a;color:#fff;border:1px solid #504051;border-radius:999px;padding:10px 14px;text-decoration:none;font-size:12px;font-weight:700}
 .rr-global-nav a:hover{border-color:#fa365f}
@@ -808,29 +808,70 @@ async function rrLoadGlobalDiscovery(){
   {name:'Killer Joe',year:'2011',classification:'NC-17 (US)',category:'Crime · Thriller'},
   {name:'Henry & June',year:'1990',classification:'NC-17 (US)',category:'Drama'}
  ];
+ // Search by exact title AND release year so remakes cannot open accidentally.
+ async function rrResolveMatureFilm(entry){
+  try{
+   const response=await fetch('/api/movies?query='+encodeURIComponent(entry.name));
+   if(!response.ok)return null;
+   const payload=await response.json();
+   const matches=(Array.isArray(payload.results)?payload.results:[]).filter(x=>
+    x.media_type==='movie' &&
+    rrNormalizedTitle(x.title||'')===rrNormalizedTitle(entry.name) &&
+    String(x.release_date||'').slice(0,4)===entry.year
+   );
+   const result=matches.find(x=>x.poster_path)||matches[0];
+   if(!result)return null;
+   const title=rrGlobalFromApi(result);
+   if(!title)return null;
+   title.adultClassification=entry.classification;
+   return title;
+  }catch(e){console.warn('Mature title lookup unavailable:',entry.name,e);return null;}
+ }
  window.rrLoadMatureTitles=async()=>{
   const panel=document.getElementById('rr-global-grid-mature');
   if(!panel||!(window.rrMatureApproved&&window.rrMatureApproved()))return;
-  // Curated classification list is independent of search API response formats.
-  // Never show unverified API genre results as adult-rated.
-  panel.innerHTML=rrAdultFilmPicks.map(entry=>`<article class="rr-mature-film">
+  panel.innerHTML=rrAdultFilmPicks.map((entry,i)=>`<article class="rr-mature-film" data-mature-index="${i}">
    <div class="rr-mature-film-icon" aria-hidden="true">🎬</div>
    <h3>${rrEscape(entry.name)}</h3>
    <p class="meta">${rrEscape(entry.year)} · ${rrEscape(entry.category)}</p>
    <p class="rr-mature-rating">${rrEscape(entry.classification)}</p>
-   <button type="button" class="rr-action rr-mature-find">Find in ReelRadar ↗</button>
+   <button type="button" class="rr-action rr-mature-find" disabled>Finding exact movie…</button>
   </article>`).join('');
-  panel.querySelectorAll('.rr-mature-film').forEach((card,i)=>{
-   card.querySelector('.rr-mature-find').addEventListener('click',()=>{
-    const title=rrAdultFilmPicks[i].name;
-    const input=document.getElementById('search');
-    location.hash='#top';
-    if(typeof window.rrNavigatePage==='function')window.rrNavigatePage('home');
-    input.value=title;
-    input.dispatchEvent(new Event('input',{bubbles:true}));
-    input.focus();
-   });
-  });
+  // Cards stay visible if catalog lookups fail; only exact matches are opened.
+  let next=0;
+  await Promise.all(Array.from({length:3},async()=>{
+   while(next<rrAdultFilmPicks.length){
+    const i=next++,entry=rrAdultFilmPicks[i];
+    const card=panel.querySelector('[data-mature-index="'+i+'"]');
+    const movie=await rrResolveMatureFilm(entry);
+    if(!card||!card.isConnected)return;
+    const button=card.querySelector('button');
+    if(!movie){
+     button.textContent='Search by title ↗';
+     button.disabled=false;
+     button.addEventListener('click',()=>{
+      const input=document.getElementById('search');
+      if(typeof window.rrNavigatePage==='function')window.rrNavigatePage('home');
+      location.hash='#top';
+      input.value=entry.name+' '+entry.year;
+      input.dispatchEvent(new Event('input',{bubbles:true}));
+      input.focus();
+     });
+     continue;
+    }
+    const icon=card.querySelector('.rr-mature-film-icon');
+    if(movie.poster){
+     icon.innerHTML='<img loading="lazy" alt="'+rrEscape(movie.title)+' poster" src="'+rrEscape(movie.poster)+'">';
+    }
+    const existing=titles.find(x=>rrTitleKey(x)===rrTitleKey(movie));
+    if(!existing)titles.push(movie);
+    button.disabled=false;
+    button.textContent='View movie details ↗';
+    button.addEventListener('click',()=>rrOpenSavedOrLive(movie));
+    card.addEventListener('click',e=>{if(!e.target.closest('button'))rrOpenSavedOrLive(movie);});
+    card.style.cursor='pointer';
+   }
+  }));
  };
  // Limit concurrent calls to avoid overloading serverless endpoints on mobile.
  let cursor=0;
