@@ -48,7 +48,7 @@ main{max-width:1380px}.rr-quick-nav{display:flex;gap:10px;overflow-x:auto;scroll
 .rr-google-btn:hover{background:#f1f3f4}.rr-google-btn:disabled{opacity:.55;cursor:wait}
 .rr-auth-divider{display:flex;align-items:center;gap:12px;color:#b7b7c6;font-size:12px;margin:16px 0}.rr-auth-divider:before,.rr-auth-divider:after{content:"";height:1px;background:#414152;flex:1}
 
-/* ReelRadar Global Discovery */
+/* ReelRadar Global Discovery */\n.rr-mature-rating{font-size:12px;color:#ffc0ce;line-height:1.45;margin:8px 0 4px}.rr-mature-card{min-width:0}
 .rr-global-nav{display:flex;gap:9px;overflow-x:auto;padding:13px 0 20px;scrollbar-width:none}
 .rr-global-nav a{white-space:nowrap;background:#211b2a;color:#fff;border:1px solid #504051;border-radius:999px;padding:10px 14px;text-decoration:none;font-size:12px;font-weight:700}
 .rr-global-nav a:hover{border-color:#fa365f}
@@ -744,7 +744,7 @@ const rrGlobalGroups=[
  ['hollywood','🎬 Hollywood & English-Language Cinema','English-language popular movies'],
  ['asian','🌏 More Asian Cinema','Thai, Indonesian and other Asian films'],
  ['classics','📼 1990s Classics','Movies released from 1990 through 1999'],
- ['mature','🔞 Mature Themes','Thrillers and horror; ratings and suitability must be checked'],
+ ['mature','🔞 Mature Themes','Adult-rated cinema across romance, drama, crime, thrillers, comedy and international films · classifications vary by country'],
  ['kids','🧸 Kids & Family Movies','Family and animated titles; verify official age ratings'],
  ['teens','🎒 Teen Movie Picks','Coming-of-age, romance and adventure; check content ratings']
 ];
@@ -798,7 +798,45 @@ async function rrLoadGlobalDiscovery(){
    rrWireCards(panel,items);
   }catch(e){console.warn('Global discovery unavailable:',job.kind,e);panel.innerHTML='<p class="empty">Could not load this collection. Try refreshing later.</p>';}
  }
- window.rrLoadMatureTitles=()=>loadOne({id:'mature',kind:'mature'});
+ // Curated films with documented US NC-17 classifications; no genre-based assumption that horror = 18+.
+ const rrAdultFilmPicks=[
+  {name:'Shame',year:'2011',classification:'NC-17 (US)',category:'Drama'},
+  {name:'Blue Is the Warmest Colour',year:'2013',classification:'NC-17 (US)',category:'Romance · Drama'},
+  {name:'Lust, Caution',year:'2007',classification:'NC-17 (US)',category:'Romance · Thriller'},
+  {name:'The Dreamers',year:'2003',classification:'NC-17 (US)',category:'Drama'},
+  {name:'Blonde',year:'2022',classification:'NC-17 (US)',category:'Biographical drama'},
+  {name:'Killer Joe',year:'2011',classification:'NC-17 (US)',category:'Crime · Thriller'},
+  {name:'Henry & June',year:'1990',classification:'NC-17 (US)',category:'Drama'}
+ ];
+ window.rrLoadMatureTitles=async()=>{
+  const panel=document.getElementById('rr-global-grid-mature');
+  if(!panel||!(window.rrMatureApproved&&window.rrMatureApproved()))return;
+  panel.innerHTML='<p class="rr-global-loading">Finding adult-rated films across genres…</p>';
+  const picks=[];
+  // Match both title AND release year, preventing misleading classifications on remakes.
+  for(let i=0;i<rrAdultFilmPicks.length;i+=3){
+   const batch=await Promise.all(rrAdultFilmPicks.slice(i,i+3).map(async entry=>{
+    try{
+     const response=await fetch('/api/movies?query='+encodeURIComponent(entry.name));
+     if(!response.ok)return null;
+     const data=await response.json();
+     const match=(data.results||[]).find(x=>x.media_type==='movie'&&rrNormalizedTitle(x.title)===rrNormalizedTitle(entry.name)&&String(x.release_date||'').slice(0,4)===entry.year);
+     if(!match)return null;
+     const title=rrGlobalFromApi(match);
+     if(!title)return null;
+     title.adultClassification=entry.classification;
+     title.adultCategory=entry.category;
+     return title;
+    }catch{return null;}
+   }));
+   for(const item of batch)if(item&&!picks.some(x=>rrTitleKey(x)===rrTitleKey(item)))picks.push(item);
+  }
+  if(!(window.rrMatureApproved&&window.rrMatureApproved()))return;
+  panel.innerHTML=picks.length?picks.map(t=>'<div class="rr-mature-card">'+rrCardHtml(t)+'<p class="rr-mature-rating">'+rrEscape(t.adultClassification)+' · '+rrEscape(t.adultCategory)+'</p></div>').join(''):'<p class="empty">Adult-rated titles could not be matched in the current movie catalog. Try again later.</p>';
+  rrWireCards(panel,picks);
+  for(const item of picks){if(!titles.some(x=>rrTitleKey(x)===rrTitleKey(item)))titles.push(item);}
+  // This starter collection is deliberately curated: the API does not supply trustworthy per-country certifications.
+ };
  // Limit concurrent calls to avoid overloading serverless endpoints on mobile.
  let cursor=0;
  await Promise.all(Array.from({length:3},async()=>{
@@ -990,7 +1028,7 @@ rrLoadUpcomingMovies();rrLoadUpcomingSeries();
  if(global&&typeof MutationObserver!=='undefined')new MutationObserver(()=>{if(pageForHash()==='movies'||pageForHash()==='series')populateBrowse();}).observe(global,{childList:true});
  window.addEventListener('rr-global-discovery-ready',populateBrowse);
  navigate();
-})();</script><dialog id="rrMatureDialog" aria-labelledby="rrMatureHeading"><h2 id="rrMatureHeading">🔞 Mature Themes</h2><p>This collection may include movies and shows intended for adults. You must be 18 or older to continue.</p><label class="rr-mature-check"><input id="rrMatureAgree" type="checkbox"/> I confirm that I am 18 years of age or older.</label><div class="rr-mature-actions"><button id="rrMatureCancel" type="button">Go back</button><button id="rrMatureContinue" type="button" disabled>Continue</button></div><p class="small">This is a self-declaration, not verified age assurance. Content ratings may be incomplete.</p></dialog>
+})();</script><dialog id="rrMatureDialog" aria-labelledby="rrMatureHeading"><h2 id="rrMatureHeading">🔞 Mature Themes</h2><p>This collection includes adult-rated films across multiple genres, including drama, romance, crime and thrillers. You must be 18 or older to continue.</p><label class="rr-mature-check"><input id="rrMatureAgree" type="checkbox"/> I confirm that I am 18 years of age or older.</label><div class="rr-mature-actions"><button id="rrMatureCancel" type="button">Go back</button><button id="rrMatureContinue" type="button" disabled>Continue</button></div><p class="small">This is a self-declaration, not verified age assurance. Content ratings may be incomplete.</p></dialog>
 <style>
 #rrMatureDialog{width:min(440px,calc(100vw - 28px));background:#191923;color:white;border:1px solid #5a4759;border-radius:18px;padding:24px;box-shadow:0 18px 60px #0009}
 #rrMatureDialog::backdrop{background:#000c}
