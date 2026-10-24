@@ -48,7 +48,7 @@ main{max-width:1380px}.rr-quick-nav{display:flex;gap:10px;overflow-x:auto;scroll
 .rr-google-btn:hover{background:#f1f3f4}.rr-google-btn:disabled{opacity:.55;cursor:wait}
 .rr-auth-divider{display:flex;align-items:center;gap:12px;color:#b7b7c6;font-size:12px;margin:16px 0}.rr-auth-divider:before,.rr-auth-divider:after{content:"";height:1px;background:#414152;flex:1}
 
-/* ReelRadar Global Discovery */\n.rr-mature-rating{font-size:12px;color:#ffc0ce;line-height:1.45;margin:8px 0 4px}.rr-mature-card{min-width:0}
+/* ReelRadar Global Discovery */\n.rr-mature-rating{font-size:12px;color:#ffc0ce;line-height:1.45;margin:8px 0 4px}.rr-mature-card{min-width:0}.rr-mature-film{min-width:0;background:#191923;border:1px solid #454052;border-radius:13px;padding:14px}.rr-mature-film h3{font-size:15px;margin:9px 0 6px}.rr-mature-film-icon{display:grid;place-items:center;aspect-ratio:2/2.3;background:linear-gradient(135deg,#302536,#171720);border-radius:10px;font-size:40px}.rr-mature-film .rr-action{font-size:12px;margin-top:10px}
 .rr-global-nav{display:flex;gap:9px;overflow-x:auto;padding:13px 0 20px;scrollbar-width:none}
 .rr-global-nav a{white-space:nowrap;background:#211b2a;color:#fff;border:1px solid #504051;border-radius:999px;padding:10px 14px;text-decoration:none;font-size:12px;font-weight:700}
 .rr-global-nav a:hover{border-color:#fa365f}
@@ -811,31 +811,26 @@ async function rrLoadGlobalDiscovery(){
  window.rrLoadMatureTitles=async()=>{
   const panel=document.getElementById('rr-global-grid-mature');
   if(!panel||!(window.rrMatureApproved&&window.rrMatureApproved()))return;
-  panel.innerHTML='<p class="rr-global-loading">Finding adult-rated films across genres…</p>';
-  const picks=[];
-  // Match both title AND release year, preventing misleading classifications on remakes.
-  for(let i=0;i<rrAdultFilmPicks.length;i+=3){
-   const batch=await Promise.all(rrAdultFilmPicks.slice(i,i+3).map(async entry=>{
-    try{
-     const response=await fetch('/api/movies?query='+encodeURIComponent(entry.name));
-     if(!response.ok)return null;
-     const data=await response.json();
-     const match=(data.results||[]).find(x=>x.media_type==='movie'&&rrNormalizedTitle(x.title)===rrNormalizedTitle(entry.name)&&String(x.release_date||'').slice(0,4)===entry.year);
-     if(!match)return null;
-     const title=rrGlobalFromApi(match);
-     if(!title)return null;
-     title.adultClassification=entry.classification;
-     title.adultCategory=entry.category;
-     return title;
-    }catch{return null;}
-   }));
-   for(const item of batch)if(item&&!picks.some(x=>rrTitleKey(x)===rrTitleKey(item)))picks.push(item);
-  }
-  if(!(window.rrMatureApproved&&window.rrMatureApproved()))return;
-  panel.innerHTML=picks.length?picks.map(t=>'<div class="rr-mature-card">'+rrCardHtml(t)+'<p class="rr-mature-rating">'+rrEscape(t.adultClassification)+' · '+rrEscape(t.adultCategory)+'</p></div>').join(''):'<p class="empty">Adult-rated titles could not be matched in the current movie catalog. Try again later.</p>';
-  rrWireCards(panel,picks);
-  for(const item of picks){if(!titles.some(x=>rrTitleKey(x)===rrTitleKey(item)))titles.push(item);}
-  // This starter collection is deliberately curated: the API does not supply trustworthy per-country certifications.
+  // Curated classification list is independent of search API response formats.
+  // Never show unverified API genre results as adult-rated.
+  panel.innerHTML=rrAdultFilmPicks.map(entry=>`<article class="rr-mature-film">
+   <div class="rr-mature-film-icon" aria-hidden="true">🎬</div>
+   <h3>${rrEscape(entry.name)}</h3>
+   <p class="meta">${rrEscape(entry.year)} · ${rrEscape(entry.category)}</p>
+   <p class="rr-mature-rating">${rrEscape(entry.classification)}</p>
+   <button type="button" class="rr-action rr-mature-find">Find in ReelRadar ↗</button>
+  </article>`).join('');
+  panel.querySelectorAll('.rr-mature-film').forEach((card,i)=>{
+   card.querySelector('.rr-mature-find').addEventListener('click',()=>{
+    const title=rrAdultFilmPicks[i].name;
+    const input=document.getElementById('search');
+    location.hash='#top';
+    if(typeof window.rrNavigatePage==='function')window.rrNavigatePage('home');
+    input.value=title;
+    input.dispatchEvent(new Event('input',{bubbles:true}));
+    input.focus();
+   });
+  });
  };
  // Limit concurrent calls to avoid overloading serverless endpoints on mobile.
  let cursor=0;
