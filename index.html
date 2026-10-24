@@ -436,7 +436,7 @@ async function rrLoadAlternateCast(show,showId,target){
  if(!identity||identity.type!=='tv'||target.dataset.show!==String(showId))return;
  try{
   // Optional endpoint: if not implemented, leave an accurate missing-data notice.
-  const response=await fetch('/api/credits?type=tv&id='+encodeURIComponent(identity.id));
+  const response=await fetch('/api/movies?action=credits&type=tv&id='+encodeURIComponent(identity.id));
   if(!response.ok){const el=target.querySelector('.rr-people');if(el&&target.dataset.show===String(showId))el.innerHTML='<p class="small">Cast credits are not available from the connected catalogs for this title.</p>';return;}
   const data=await response.json();
   const cast=Array.isArray(data.cast)?data.cast:[];
@@ -578,11 +578,43 @@ async function rrFindTVmazeDetail(t){
   const shows=(await r.json()).map(x=>x.show).filter(x=>rrNormalizedTitle(x.name)===rrNormalizedTitle(t.title));
   const match=shows.find(x=>String(x.premiered||'').slice(0,4)===String(t.year))||(shows.length===1?shows[0]:null);
   if(panel.dataset.lookup!==key)return;
-  if(!match){panel.textContent='Cast and episode information is not listed for this title in TVmaze.';return;}
+  if(!match){if(t.amodbId&&t.amodbType==='tv'){rrLoadAMODBSeries(t);return;}panel.textContent='Cast and episode information is not listed for this title in TVmaze.';return;}
   t.tvmazeId=match.id;
   panel.dataset.show=String(match.id);
   loadShowExtras(t);
  }catch(e){if(panel.dataset.lookup===key)panel.textContent='Series details could not be loaded right now.';}
+}
+
+// AMODB fallback for TV series not found in TVmaze.
+async function rrLoadAMODBSeries(t){
+ const target=document.getElementById('showExtras');
+ if(!target||!t.amodbId)return;
+ const key=rrTitleKey(t);
+ try{
+  const r=await fetch('/api/movies?action=details&type=tv&id='+encodeURIComponent(t.amodbId));
+  if(!r.ok)throw Error('TV details unavailable');
+  const d=await r.json();
+  if(document.getElementById('showExtras')!==target||target.dataset.lookup!==key)return;
+  const cast=(d.credits?.cast||[]).slice(0,15);
+  const people=cast.map(p=>`<div class="rr-person">${rrArtworkImg(p.name||'Cast member','Cast','poster',rrAMODBImage(p.profile_path,'w185'),(p.name||'Actor')+' portrait')}<div><strong>${rrEscape(p.name||'Unknown')}</strong><small>${rrEscape(p.character||'Cast member')}</small></div></div>`).join('');
+  const seasons=(d.seasons||[]).filter(x=>Number.isInteger(Number(x.season_number)));
+  target.innerHTML=`<section class="rr-extra"><h3>Series information</h3><p class="rr-credit-note">${rrEscape(d.status||'Status not listed')} · ${rrEscape(d.original_language||'Language not listed')} · ${rrEscape(d.number_of_seasons||seasons.length)} seasons</p><h3>Cast & characters</h3><div class="rr-people">${people||'<p class="small">Cast information is unavailable.</p>'}</div><h3>Seasons & episodes</h3>${seasons.length?`<label for="rrSeason">Choose a season</label> <select id="rrSeason" class="rr-select">${seasons.map(x=>`<option value="${Number(x.season_number)}">${Number(x.season_number)===0?'Specials':'Season '+Number(x.season_number)} · ${Number(x.episode_count)||0} episodes</option>`).join('')}</select><div id="rrEpisodeList"></div>`:'<p>Season information unavailable.</p>'}</section>`;
+  const selector=target.querySelector('#rrSeason');
+  async function renderSeason(){
+   const box=target.querySelector('#rrEpisodeList');if(!box)return;
+   const number=selector.value;box.textContent='Loading episodes…';
+   try{
+    const response=await fetch('/api/movies?action=season&id='+encodeURIComponent(t.amodbId)+'&season='+encodeURIComponent(number));
+    if(!response.ok)throw Error('Season unavailable');
+    const data=await response.json();if(target.querySelector('#rrSeason')!==selector||selector.value!==number)return;
+    box.innerHTML=(data.episodes||[]).map(ep=>`<article class="rr-episode rr-episode-card"><div class="rr-episode-thumb">${rrArtworkImg(t.title+' · '+(ep.name||'Episode '+ep.episode_number),t.genre,'episode',rrAMODBImage(ep.still_path,'w500'),(ep.name||'Episode')+' image',`Season ${number} · Episode ${ep.episode_number||'?'}`)}</div><div class="rr-episode-content"><strong>E${Number(ep.episode_number)||'?'} · ${rrEscape(ep.name||'Episode')}</strong><span class="small">${rrEscape(ep.air_date||'Release date TBA')}</span><div class="rr-episode-stats">${ep.runtime?rrEscape(ep.runtime+' min · '):''}Season ${rrEscape(number)} · Episode ${Number(ep.episode_number)||'?'}</div><p class="rr-episode-summary">${rrEscape(ep.overview||'Episode description not available.')}</p></div></article>`).join('')||'<p class="small">No episodes available for this season.</p>';
+   }catch(e){box.textContent='Episode information could not be loaded for this season.';}
+  }
+  if(selector){selector.value=String(seasons.find(x=>x.season_number===1)?.season_number??seasons[0].season_number);selector.addEventListener('change',renderSeason);renderSeason();}
+ }catch(e){if(document.getElementById('showExtras')===target&&target.dataset.lookup===key)target.textContent='Series information is unavailable from the connected catalogs.';}
+}
+function rrAMODBImage(path,size='w185'){
+ return typeof path==='string'&&/^\/[a-zA-Z0-9/_-]+\.(jpg|jpeg|png|webp)$/.test(path)?'https://image.tmdb.org/t/p/'+size+path:'';
 }
 
 // Optional movie credits API. Missing endpoint is reported clearly; never invent cast.
@@ -590,13 +622,21 @@ async function rrLoadMovieCreditsOptional(t){
  const box=document.getElementById('movieCredits');if(!box)return;
  if(!t.amodbId){box.textContent='Cast and crew details are not available from this catalog.';return;}
  try{
-  const res=await fetch('/api/credits?type=movie&id='+encodeURIComponent(t.amodbId));
+  const res=await fetch('/api/movies?action=details&type=movie&id='+encodeURIComponent(t.amodbId));
   if(!res.ok)throw Error('Credits endpoint unavailable');
   const data=await res.json();
   if(!document.getElementById('movieCredits')||document.getElementById('detail').querySelector('h2')?.textContent!==t.title)return;
-  const cast=(Array.isArray(data.cast)?data.cast:[]).filter(x=>x?.name).slice(0,15);
-  const crew=(Array.isArray(data.crew)?data.crew:[]).filter(x=>x?.name&&/director|writer|screenplay|creator/i.test(x.job||'')).slice(0,10);
-  box.innerHTML=(crew.length?'<p>'+crew.map(x=>`<strong>${rrEscape(x.job)}:</strong> ${rrEscape(x.name)}`).join(' · ')+'</p>':'')+(cast.length?'<div class="rr-people">'+cast.map(x=>`<div class="rr-person">${rrArtworkImg(x.name,'Cast','poster',typeof x.profile_path==='string'&&/^\/[a-zA-Z0-9/_-]+\.(jpg|jpeg|png|webp)$/.test(x.profile_path)?'https://image.tmdb.org/t/p/w185'+x.profile_path:'',x.name+' portrait')}<div><strong>${rrEscape(x.name)}</strong><small>${rrEscape(x.character||'Cast member')}</small></div></div>`).join('')+'</div>':'')||'Cast and crew records are unavailable for this movie.';
+  const cast=(Array.isArray(data.credits?.cast)?data.credits.cast:Array.isArray(data.cast)?data.cast:[]).filter(x=>x?.name).slice(0,15);
+  const crew=(Array.isArray(data.credits?.crew)?data.credits.crew:Array.isArray(data.crew)?data.crew:[]).filter(x=>x?.name&&/director|writer|screenplay|creator/i.test(x.job||'')).slice(0,10);
+  const facts=[];
+  if(Number(data.runtime)>0)facts.push(['Runtime',data.runtime+' minutes']);
+  if(data.release_date)facts.push(['Release date',data.release_date]);
+  if(data.status)facts.push(['Status',data.status]);
+  if(Array.isArray(data.production_countries)&&data.production_countries.length)facts.push(['Countries',data.production_countries.map(x=>x.name).filter(Boolean).join(', ')]);
+  if(Array.isArray(data.spoken_languages)&&data.spoken_languages.length)facts.push(['Languages',data.spoken_languages.map(x=>x.english_name||x.name).filter(Boolean).join(', ')]);
+  const extraFacts=facts.length?'<div class="rr-facts">'+facts.map(([k,v])=>`<div class="rr-fact"><small>${rrEscape(k)}</small><strong>${rrEscape(v)}</strong></div>`).join('')+'</div>':'';
+  const creditsHTML=(crew.length?'<p>'+crew.map(x=>`<strong>${rrEscape(x.job)}:</strong> ${rrEscape(x.name)}`).join(' · ')+'</p>':'')+(cast.length?'<div class="rr-people">'+cast.map(x=>`<div class="rr-person">${rrArtworkImg(x.name,'Cast','poster',typeof x.profile_path==='string'&&/^\/[a-zA-Z0-9/_-]+\.(jpg|jpeg|png|webp)$/.test(x.profile_path)?'https://image.tmdb.org/t/p/w185'+x.profile_path:'',x.name+' portrait')}<div><strong>${rrEscape(x.name)}</strong><small>${rrEscape(x.character||'Cast member')}</small></div></div>`).join('')+'</div>':'')||'Cast and crew records are unavailable for this movie.';
+  box.innerHTML=extraFacts+creditsHTML;
  }catch(e){if(document.getElementById('movieCredits'))box.textContent='Cast and crew records are not available from the connected movie catalog yet.';}
 }
 
@@ -634,7 +674,7 @@ function openDetail(id){
  const providerRequestId=++rrProviderRequest;
  rrLoadProviders(t,providerRequestId);
  document.getElementById('rrWatchCountry')?.addEventListener('change',e=>{rrWatchCountry=e.target.value;rrLoadProviders(t,++rrProviderRequest);});
- if(t.wikidataId)loadMovieCredits(t);else if(t.type==='Movie')rrLoadMovieCreditsOptional(t);
+ if(t.type==='Movie'&&t.amodbId)rrLoadMovieCreditsOptional(t);else if(t.wikidataId)loadMovieCredits(t);else if(t.type==='Movie')rrLoadMovieCreditsOptional(t);
  if(t.tvmazeId)loadShowExtras(t);
  else if(t.type!=='Movie')rrFindTVmazeDetail(t);
  document.querySelectorAll('#detail [data-suggest-key]').forEach(b=>b.addEventListener('click',()=>{const pool=[...titles,...(typeof rrGlobalTitles!=='undefined'?rrGlobalTitles:[]),...(typeof tvmazeTitles!=='undefined'?tvmazeTitles:[])];const selected=pool.find(x=>rrTitleKey(x)===b.dataset.suggestKey);if(selected){if(!titles.some(x=>x.id===selected.id))titles.push(selected);openDetail(selected.id);}}));
