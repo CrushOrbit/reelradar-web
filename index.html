@@ -190,6 +190,9 @@ main{max-width:1500px;padding:24px clamp(14px,3vw,42px) 75px}
 @media(max-width:520px){main{padding:15px 13px 55px}.rr-page[data-rr-page="home"] .hero{min-height:430px;padding:24px 20px;background-position:62% center}.hero h1{font-size:43px;letter-spacing:-1.6px}.rr-feature-pills span{font-size:10px}.rr-discovery-shortcuts{gap:9px;margin:15px 0 22px}.rr-discovery-shortcuts a{padding:13px;min-height:92px}.rr-discovery-shortcuts strong{font-size:14px}.rr-discovery-shortcuts small{font-size:11px}.rr-cinema-intro p{display:none}.rr-global-head{margin-top:32px}}
 @media(prefers-reduced-motion:reduce){.rr-discovery-shortcuts a{transition:none}}
 </style>
+<style id="rr-artwork-update">
+.rr-artwork{width:100%;height:100%;object-fit:cover;display:block}.rr-mature-film-icon .rr-artwork{width:100%;height:100%;object-fit:cover}.rr-episode-thumb .rr-artwork{width:100%;height:100%}.rr-person .rr-artwork{width:45px;height:60px;object-fit:cover}.rr-episode-stats{font-size:11px;color:#b8b7c5;margin:5px 0}.rr-credit-note{color:#c5c4d1;font-size:13px;line-height:1.5}
+</style>
 </head>
 <body>
 <header><div class="nav"><a aria-label="ReelRadar home" class="rr-brand" href="#top"><div class="logo">Reel<span>Radar</span></div></a><button aria-controls="rrMainNav" aria-expanded="false" aria-label="Open navigation" class="rr-menu-toggle" id="rrMenuToggle">☰</button><nav id="rrMainNav"><a href="#trending">Discover</a><a href="#movies">Movies</a><a href="#series">TV Shows</a><a href="#theaters">In Theaters</a><a href="#upcoming-movies">Upcoming Movies</a><a href="#upcoming-series">Upcoming Series</a><a href="#news">News</a><a href="#gossip">Gossip</a><a href="#podcasts">Podcasts</a><a href="#kids">Kids &amp; Family</a><a href="#watchlist">My Watchlist</a></nav><button class="rr-account-trigger" id="rrAccountOpen" type="button">Sign in / Join</button><input aria-label="Search movies and shows" class="search" id="search" placeholder="Search movies &amp; shows…"/></div></header>
@@ -220,8 +223,30 @@ function mergeTVmaze(items){for(const item of items){const t=item.show?fromTVmaz
 async function loadTVmazeShows(){try{const response=await fetch(`${TVMAZE}/shows?page=0`);if(!response.ok)throw new Error('TVmaze request failed');const shows=await response.json();tvmazeTitles=shows.filter(x=>x.image).sort((a,b)=>(b.rating?.average||0)-(a.rating?.average||0)).slice(0,30).map(fromTVmaze);mergeTVmaze(tvmazeTitles);if(!rrGlobalReady)render();}catch(error){console.warn('TVmaze could not load. The sample titles will remain visible.',error);}}
 async function searchTVmaze(query,requestId){try{const response=await fetch(`${TVMAZE}/search/shows?q=${encodeURIComponent(query)}`);if(!response.ok)throw new Error('TVmaze search failed');const results=await response.json();if(requestId!==searchRequest)return;return results.map(x=>fromTVmaze(x.show));}catch(error){console.warn('TVmaze search failed.',error);return [];}}
 function rrEscape(value){return String(value||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+// Locally generated ReelRadar cover artwork: no copied movie poster or AI service required.
+// The covers are original typography/abstract shapes, NOT official artwork or scene stills.
+function rrArtwork(title,genre='',kind='poster',subtitle=''){
+ const str=String(title||'Untitled').trim().slice(0,90);
+ const text=v=>String(v||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
+ const hash=[...str].reduce((a,c)=>(a*31+c.charCodeAt(0))>>>0,17);
+ const colors=[['#452343','#100f26','#ff8caf'],['#143e55','#101c37','#77d5fa'],['#4b301d','#181320','#f7c47b'],['#204c45','#0d2026','#94edcf'],['#442a50','#191126','#cda8ff']];
+ const [a,b,accent]=colors[hash%colors.length],wide=kind==='episode',w=wide?640:400,h=wide?360:600;
+ const words=str.split(/\s+/),lines=[];let line='';const limit=wide?24:15;
+ for(const word of words){if((line+' '+word).trim().length>limit&&line){lines.push(line);line=word;}else line=(line+' '+word).trim();}if(line)lines.push(line);
+ const shown=lines.slice(0,wide?3:5);const fs=wide?36:36;const y=wide?178:315;
+ const titleSvg=shown.map((t,i)=>`<text x="${w/2}" y="${y+i*(fs+8)}" text-anchor="middle" font-size="${fs}" font-weight="800" fill="white">${text(t)}</text>`).join('');
+ const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><defs><linearGradient id="g" x2="1" y2="1"><stop stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient></defs><rect width="100%" height="100%" fill="url(#g)"/><circle cx="${w*.85}" cy="${h*.21}" r="${w*.37}" fill="${accent}" opacity=".12"/><circle cx="${w*.1}" cy="${h*.75}" r="${w*.32}" fill="${accent}" opacity=".1"/><path d="M0 ${h*.28} Q${w*.45} ${h*.05} ${w} ${h*.32}" fill="none" stroke="${accent}" stroke-width="3" opacity=".5"/><text x="${w/2}" y="${wide?45:72}" text-anchor="middle" font-size="${wide?17:20}" font-weight="700" letter-spacing="4" fill="${accent}">REELRADAR</text>${titleSvg}<text x="${w/2}" y="${h-65}" text-anchor="middle" font-size="${wide?16:19}" fill="${accent}">${text((subtitle||genre||'DISCOVER').slice(0,35))}</text><text x="${w/2}" y="${h-26}" text-anchor="middle" font-size="12" fill="#ffffffb0">REELRADAR ORIGINAL COVER</text></svg>`;
+ return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
+}
+function rrArtworkImg(title,genre,kind,real,alt,subtitle=''){
+ const fallback=rrArtwork(title,genre,kind,subtitle);
+ const src=real||fallback;
+ // All values escaped for HTML attributes; fallback data URL has no embedded quotes.
+ return `<img class="rr-artwork" loading="lazy" src="${rrEscape(src)}" alt="${rrEscape(alt||title+' cover artwork')}" onerror="this.onerror=null;this.src='${fallback}'">`;
+}
+
 function rrDate(offset=0){const d=new Date();d.setDate(d.getDate()+offset);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
-function rrEpisodeCard(ep,label){const show=ep.show||ep._embedded?.show||{};const image=(ep.image&&(ep.image.medium||ep.image.original))||(show.image&&(show.image.medium||show.image.original));const season=ep.season?`S${ep.season}`:'';const number=ep.number?`E${ep.number}`:'';return `<article class="feature-card">${image?`<img src="${rrEscape(image)}" alt="" style="width:100%;max-height:155px;object-fit:cover;border-radius:8px;margin-bottom:10px" onerror="this.outerHTML='<div class=&quot;poster-placeholder&quot;>🎬</div>'">`:''}<span class="feature-label">${label}</span><h3>${rrEscape(show.name||ep.name||'Series title unavailable')}</h3><p><strong>${rrEscape(ep.name||'Episode')}</strong>${season||number?` · ${rrEscape(season)}${rrEscape(number)}`:''}<br>${rrEscape(ep.airdate||'Date TBA')}${ep.airtime?` · ${rrEscape(ep.airtime)}`:''}${show.network&&show.network.name?`<br>${rrEscape(show.network.name)}`:''}${show.webChannel&&show.webChannel.name?`<br>${rrEscape(show.webChannel.name)}`:''}</p>${ep.url?`<a href="${rrEscape(ep.url)}" target="_blank" rel="noopener" style="color:#ff8aa0">View episode details ↗</a>`:''}</article>`;}
+function rrEpisodeCard(ep,label){const show=ep.show||ep._embedded?.show||{};const image=(ep.image&&(ep.image.medium||ep.image.original))||(show.image&&(show.image.medium||show.image.original));const season=ep.season?`S${ep.season}`:'';const number=ep.number?`E${ep.number}`:'';return `<article class="feature-card"><div class="rr-episode-thumb" style="margin-bottom:10px">${rrArtworkImg((show.name||'Series')+' · '+(ep.name||'Episode'),'', 'episode',ep.image?.medium||ep.image?.original||'',(ep.name||'Episode')+' artwork')}</div><span class="feature-label">${label}</span><h3>${rrEscape(show.name||ep.name||'Series title unavailable')}</h3><p><strong>${rrEscape(ep.name||'Episode')}</strong>${season||number?` · ${rrEscape(season)}${rrEscape(number)}`:''}<br>${rrEscape(ep.airdate||'Date TBA')}${ep.airtime?` · ${rrEscape(ep.airtime)}`:''}${show.network&&show.network.name?`<br>${rrEscape(show.network.name)}`:''}${show.webChannel&&show.webChannel.name?`<br>${rrEscape(show.webChannel.name)}`:''}</p>${ep.url?`<a href="${rrEscape(ep.url)}" target="_blank" rel="noopener" style="color:#ff8aa0">View episode details ↗</a>`:''}</article>`;}
 async function loadTVSchedules(){const todayBox=document.getElementById('upcomingSeriesList');const recentBox=document.getElementById('updatesList');try{const today=rrDate();const urls=[`${TVMAZE}/schedule?country=US&date=${today}`,`${TVMAZE}/schedule/web?date=${today}`];const responses=await Promise.all(urls.map(url=>fetch(url)));if(responses.some(r=>!r.ok))throw new Error('TV schedule unavailable');let episodes=[];for(const r of responses)episodes.push(...await r.json());const seen=new Set();episodes=episodes.filter(ep=>{if(seen.has(ep.id))return false;seen.add(ep.id);return true;}).sort((a,b)=>(a.airtime||'').localeCompare(b.airtime||''));todayBox.innerHTML=episodes.length?episodes.slice(0,9).map(ep=>rrEpisodeCard(ep,'AIRING TODAY')).join(''):'<p class="empty">TVmaze has no episodes listed for today. Try again later.</p>';const dates=[rrDate(-1),rrDate(-2)];const pastResponses=await Promise.all(dates.map(d=>fetch(`${TVMAZE}/schedule?country=US&date=${d}`)));let past=[];for(const r of pastResponses){if(r.ok)past.push(...await r.json());}const pastSeen=new Set();past=past.filter(ep=>{if(pastSeen.has(ep.id))return false;pastSeen.add(ep.id);return true;}).sort((a,b)=>(b.airdate||'').localeCompare(a.airdate||'')).slice(0,6);recentBox.innerHTML=past.length?past.map(ep=>rrEpisodeCard(ep,'RECENT')).join(''):'<p class="empty">No recent episodes were returned for the last two days.</p>';}catch(err){console.warn('Could not load TVmaze schedules',err);todayBox.innerHTML='<p class="empty">Could not load the live schedule. Check your connection and reload.</p>';recentBox.innerHTML='<p class="empty">Could not load recent episodes right now.</p>';}}
 // Wikidata structured metadata is CC0. Search results do not reuse third-party posters or ratings.
 const WIKIDATA='https://www.wikidata.org/w/api.php';
@@ -379,9 +404,9 @@ async function loadShowExtras(show){
    fetch(`${TVMAZE}/shows/${showId}/cast`),fetch(`${TVMAZE}/shows/${showId}/seasons`),fetch(`${TVMAZE}/shows/${showId}/episodes`)]);
   if(!castR.ok||!seasonsR.ok||!episodesR.ok)throw Error('TVmaze details temporarily unavailable');
   const [cast,seasons,episodes]=await Promise.all([castR.json(),seasonsR.json(),episodesR.json()]);
-  const people=cast.slice(0,12).map(x=>`<div class="rr-person">${x.person?.image?.medium?`<img loading="lazy" src="${rrEscape(x.person.image.medium)}" alt="">`:''}<div><strong>${rrEscape(x.person?.name||'Unknown')}</strong><small>${rrEscape(x.character?.name||'Cast member')}</small></div></div>`).join('');
+  const people=cast.slice(0,12).map(x=>`<div class="rr-person">${rrArtworkImg(x.person?.name||'Cast member','Cast','poster',x.person?.image?.medium||'',(x.person?.name||'Cast member')+' portrait')}<div><strong>${rrEscape(x.person?.name||'Unknown')}</strong><small>${rrEscape(x.character?.name||'Cast member')}</small></div></div>`).join('');
   const seasonOptions=seasons.map(x=>`<option value="${Number(x.number)}">${Number(x.number)===0?'Specials':'Season '+Number(x.number)} · ${episodes.filter(ep=>ep.season===Number(x.number)).length} episodes</option>`).join('');
-  const html=`<section class="rr-extra"><h3>Cast & characters</h3><div class="rr-people">${people||'<p class="small">TVmaze has no cast records for this title. Checking another catalog if available…</p>'}</div><h3>Seasons & episodes</h3>${seasons.length?`<label for="rrSeason">Choose a season</label> <select id="rrSeason" class="rr-select">${seasonOptions}</select><div id="rrEpisodeList"></div>`:'<p>Season information unavailable.</p>'}</section>`;
+  const html=`<section class="rr-extra"><h3>Series information</h3><p class="rr-credit-note">${rrEscape(show.language||'Language not listed')} · ${rrEscape(show.country||'Country not listed')} · ${rrEscape(show.update||'')}</p><h3>Cast & characters</h3><div class="rr-people">${people||'<p class="small">TVmaze has no cast records for this title. Checking another catalog if available…</p>'}</div><h3>Seasons & episodes</h3>${seasons.length?`<label for="rrSeason">Choose a season</label> <select id="rrSeason" class="rr-select">${seasonOptions}</select><div id="rrEpisodeList"></div>`:'<p>Season information unavailable.</p>'}</section>`;
   showDetailCache.set(showId,html);
   if(!document.getElementById('showExtras')||document.getElementById('showExtras').dataset.show!==String(showId))return;
   target.innerHTML=html;
@@ -393,10 +418,10 @@ async function loadShowExtras(show){
     const list=episodes.filter(ep=>ep.season===selected).sort((a,b)=>(a.number||0)-(b.number||0)).slice(0,120);
     const episodeHtml=ep=>{
      const name=rrEscape(ep.name&& !/^episode\s*\d+$/i.test(ep.name)?ep.name:`Episode ${ep.number||''}`.trim());
-     const image=ep.image?.original||ep.image?.medium||show.backdrop||show.poster||'';
+     const image=ep.image?.original||ep.image?.medium||'';
      const summary=String(ep.summary||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
      const description=summary?(summary.length>145?`<details class="rr-episode-more"><summary>${rrEscape(summary.slice(0,145).trimEnd())}… <span class="rr-read-more">Read full description</span></summary><p class="rr-episode-summary">${rrEscape(summary)}</p></details>`:`<p class="rr-episode-summary">${rrEscape(summary)}</p>`):'<p class="small">Episode description not available.</p>';
-     return `<article class="rr-episode rr-episode-card"><div class="rr-episode-thumb">${image?`<img loading="lazy" src="${rrEscape(image)}" alt="${name} episode still" onerror="this.style.display='none';this.nextElementSibling.hidden=false"><span class="rr-episode-fallback" hidden>🎬<small>Episode image unavailable</small></span>`:'<span class="rr-episode-fallback">🎬<small>Episode image unavailable</small></span>'}</div><div class="rr-episode-content"><strong>${ep.number?'E'+Number(ep.number)+' · ':''}${name}</strong><span class="small">${rrEscape(ep.airdate||'Release date TBA')}</span>${description}</div></article>`;
+     return `<article class="rr-episode rr-episode-card"><div class="rr-episode-thumb">${rrArtworkImg((show.title||'Series')+' · '+(ep.name||'Episode '+ep.number),show.genre,'episode',image,(ep.name||'Episode')+' image',`Season ${ep.season||'?'} · Episode ${ep.number||'?'}`)}</div><div class="rr-episode-content"><strong>${ep.number?'E'+Number(ep.number)+' · ':''}${name}</strong><span class="small">${rrEscape(ep.airdate||'Release date TBA')}</span><div class="rr-episode-stats">${ep.runtime?rrEscape(String(ep.runtime))+' min · ':''}Season ${Number(ep.season)||0} · Episode ${Number(ep.number)||0}</div>${description}</div></article>`;
     };
     target.querySelector('#rrEpisodeList').innerHTML=list.length?list.map(episodeHtml).join(''):'<p class="small">No episodes listed for this season.</p>';
    }
@@ -429,7 +454,8 @@ function rrIsSaved(t){return rrWatchlist.some(x=>x.key===rrTitleKey(t));}
 function rrPersist(){if(window.rrCloudUser){window.rrSyncWatchlist?.();return;}try{localStorage.setItem(RR_WATCH_KEY,JSON.stringify(rrWatchlist));}catch(e){console.warn('Could not save guest watchlist',e);}}
 function rrToggleSaved(t){const key=rrTitleKey(t),i=rrWatchlist.findIndex(x=>x.key===key);if(i>=0)rrWatchlist.splice(i,1);else rrWatchlist.unshift({key,title:t.title,year:t.year,type:t.type,genre:t.genre||'',poster:t.poster||'',rating:t.rating||'N/A',source:t.source||'',synopsis:t.synopsis||'',providers:t.providers||[],tvmazeId:t.tvmazeId||null,wikidataId:t.wikidataId||null,amodbId:t.amodbId||null,amodbType:t.amodbType||null,externalUrl:t.externalUrl||'',imageCredit:t.imageCredit||null,update:t.update||''});rrPersist();rrRenderWatchlist();if(typeof render==='function')render();rrUpdateSaveButton(t);}
 function rrUpdateSaveButton(t){const b=document.getElementById('rrSave');if(!b)return;const saved=rrIsSaved(t);b.setAttribute('aria-pressed',String(saved));b.textContent=saved?'♥ Remove from watchlist':'♡ Save to watchlist';b.onclick=()=>rrToggleSaved(t);}
-function rrCardHtml(t){const key=rrTitleKey(t),saved=rrIsSaved(t);return `<article class="card" data-watch-key="${rrEscape(key)}"><div class="poster">${t.poster?`<img loading="lazy" src="${rrEscape(t.poster)}" alt="${rrEscape(t.title)} image" onerror="this.outerHTML='<div class=&quot;poster-placeholder&quot;>🎬</div>'">`:'<div class="poster-placeholder">🎬</div>'}<button class="rr-save-card" type="button" aria-label="${saved?'Remove from':'Add to'} watchlist: ${rrEscape(t.title)}" aria-pressed="${saved}" data-save-key="${rrEscape(key)}">${saved?'♥':'♡'}</button>${t.rating&&t.rating!=='N/A'?`<span class="rating">★ ${rrEscape(t.rating)}</span>`:''}</div><h3>${rrEscape(t.title)}</h3><div class="meta">${rrEscape(t.year)} · ${rrEscape(t.type)}</div></article>`;}
+function rrCardHtml(t){const key=rrTitleKey(t),saved=rrIsSaved(t);return `<article class="card" data-watch-key="${rrEscape(key)}"><div class="poster">${rrArtworkImg(t.title,t.genre,'poster',t.poster,t.title+' cover')}<button class="rr-save-card" type="button" aria-label="${saved?'Remove from':'Add to'} watchlist: ${rrEscape(t.title)}" aria-pressed="${saved}" data-save-key="${rrEscape(key)}">${saved?'♥':'♡'}</button>${t.rating&&t.rating!=='N/A'?`<span class="rating">★ ${rrEscape(t.rating)}</span>`:''}</div><h3>${rrEscape(t.title)}</h3><div class="meta">${rrEscape(t.year)} · ${rrEscape(t.type)}</div></article>`;}
+
 function rrWireCards(root,items){root.querySelectorAll('[data-watch-key]').forEach(card=>{const t=items.find(x=>rrTitleKey(x)===card.dataset.watchKey);if(!t)return;card.addEventListener('click',e=>{if(e.target.closest('[data-save-key]'))return;rrOpenSavedOrLive(t);});card.querySelector('[data-save-key]')?.addEventListener('click',e=>{e.stopPropagation();rrToggleSaved(t);});});}
 function rrOpenSavedOrLive(t){const existing=titles.find(x=>rrTitleKey(x)===rrTitleKey(t));if(existing)openDetail(existing.id);else{const tempId=-Math.floor(Math.random()*1e9)-1;const temp={...t,id:tempId};titles.push(temp);openDetail(tempId);}}
 function rrRenderWatchlist(){const grid=document.getElementById('watchlistGrid');const empty=document.getElementById('watchlistEmpty');if(!grid)return;grid.innerHTML=rrWatchlist.map(rrCardHtml).join('');empty.style.display=rrWatchlist.length?'none':'block';document.getElementById('watchlistCount').textContent='('+rrWatchlist.length+')';rrWireCards(grid,rrWatchlist);}
@@ -559,12 +585,27 @@ async function rrFindTVmazeDetail(t){
  }catch(e){if(panel.dataset.lookup===key)panel.textContent='Series details could not be loaded right now.';}
 }
 
+// Optional movie credits API. Missing endpoint is reported clearly; never invent cast.
+async function rrLoadMovieCreditsOptional(t){
+ const box=document.getElementById('movieCredits');if(!box)return;
+ if(!t.amodbId){box.textContent='Cast and crew details are not available from this catalog.';return;}
+ try{
+  const res=await fetch('/api/credits?type=movie&id='+encodeURIComponent(t.amodbId));
+  if(!res.ok)throw Error('Credits endpoint unavailable');
+  const data=await res.json();
+  if(!document.getElementById('movieCredits')||document.getElementById('detail').querySelector('h2')?.textContent!==t.title)return;
+  const cast=(Array.isArray(data.cast)?data.cast:[]).filter(x=>x?.name).slice(0,15);
+  const crew=(Array.isArray(data.crew)?data.crew:[]).filter(x=>x?.name&&/director|writer|screenplay|creator/i.test(x.job||'')).slice(0,10);
+  box.innerHTML=(crew.length?'<p>'+crew.map(x=>`<strong>${rrEscape(x.job)}:</strong> ${rrEscape(x.name)}`).join(' · ')+'</p>':'')+(cast.length?'<div class="rr-people">'+cast.map(x=>`<div class="rr-person">${rrArtworkImg(x.name,'Cast','poster',typeof x.profile_path==='string'&&/^\/[a-zA-Z0-9/_-]+\.(jpg|jpeg|png|webp)$/.test(x.profile_path)?'https://image.tmdb.org/t/p/w185'+x.profile_path:'',x.name+' portrait')}<div><strong>${rrEscape(x.name)}</strong><small>${rrEscape(x.character||'Cast member')}</small></div></div>`).join('')+'</div>':'')||'Cast and crew records are unavailable for this movie.';
+ }catch(e){if(document.getElementById('movieCredits'))box.textContent='Cast and crew records are not available from the connected movie catalog yet.';}
+}
+
 function openDetail(id){
  const t=titles.find(x=>x.id===id);if(!t)return;
  const safeTitle=rrEscape(t.title);
  const trailerUrl='https://www.youtube.com/results?search_query='+encodeURIComponent(t.title+' '+t.year+' official trailer');
  const tags=[t.type,t.year,t.genre,t.rating!=='N/A'?'★ '+t.rating:null].filter(Boolean);
- const poster=t.poster?`<img src="${rrEscape(t.poster)}" alt="${safeTitle} poster" onerror="this.style.display='none'">`:'<div class="poster-placeholder">🎬<small>Poster unavailable</small></div>';
+ const poster=rrArtworkImg(t.title,t.genre,'poster',t.poster,t.title+' cover');
  const providerIntro='<p class="small">Checking streaming availability in the United States…</p>';
  document.getElementById('detail').innerHTML=`
  <div class="detail">
@@ -580,7 +621,7 @@ function openDetail(id){
  <a class="btn secondary" href="${trailerUrl}" target="_blank" rel="noopener noreferrer">▶ Find trailer ↗</a>
  </div>
  <section class="rr-detail-block"><h3>Where to watch</h3>${rrProviderCountryControl()}<div id="rrProviderResults" aria-live="polite">${providerIntro}</div><p class="rr-detail-note">Streaming options vary by location and may change. Check the provider before subscribing.</p></section>
- ${t.wikidataId?`<section class="rr-detail-block"><h3>Cast &amp; credits</h3><div id="movieCredits" data-movie="${rrEscape(t.wikidataId)}" class="small">Loading credits…</div></section>`:''}
+ ${t.type==='Movie'?`<section class="rr-detail-block"><h3>Cast &amp; credits</h3><div id="movieCredits" data-movie="${rrEscape(t.wikidataId||'')}" class="small">${t.wikidataId?'Loading credits…':'Checking available credits…'}</div></section>`:''}
  ${rrDetailSuggestions(t)}
  <p class="rr-detail-note">Catalog source: ${rrEscape(t.source||'ReelRadar')}. Details vary by source.</p>
  ${t.externalUrl?`<p class="rr-detail-note"><a href="${rrSafeLink(t.externalUrl)}" target="_blank" rel="noopener noreferrer">More title information ↗</a></p>`:''}
@@ -593,7 +634,7 @@ function openDetail(id){
  const providerRequestId=++rrProviderRequest;
  rrLoadProviders(t,providerRequestId);
  document.getElementById('rrWatchCountry')?.addEventListener('change',e=>{rrWatchCountry=e.target.value;rrLoadProviders(t,++rrProviderRequest);});
- if(t.wikidataId)loadMovieCredits(t);
+ if(t.wikidataId)loadMovieCredits(t);else if(t.type==='Movie')rrLoadMovieCreditsOptional(t);
  if(t.tvmazeId)loadShowExtras(t);
  else if(t.type!=='Movie')rrFindTVmazeDetail(t);
  document.querySelectorAll('#detail [data-suggest-key]').forEach(b=>b.addEventListener('click',()=>{const pool=[...titles,...(typeof rrGlobalTitles!=='undefined'?rrGlobalTitles:[]),...(typeof tvmazeTitles!=='undefined'?tvmazeTitles:[])];const selected=pool.find(x=>rrTitleKey(x)===b.dataset.suggestKey);if(selected){if(!titles.some(x=>x.id===selected.id))titles.push(selected);openDetail(selected.id);}}));
@@ -788,7 +829,7 @@ async function rrLoadGlobalDiscovery(){
    const data=await r.json();
    const seen=new Set();
    const items=(data.results||[]).map(rrGlobalFromApi).filter(t=>{
-    if(!t||!t.poster||seen.has(rrTitleKey(t)))return false;
+    if(!t||seen.has(rrTitleKey(t)))return false;
     seen.add(rrTitleKey(t));return true;
    }).slice(0,10);
    if(!items.length){panel.innerHTML='<p class="empty">No titles were returned by the discovery service.</p>';return;}
@@ -831,7 +872,7 @@ async function rrLoadGlobalDiscovery(){
   const panel=document.getElementById('rr-global-grid-mature');
   if(!panel||!(window.rrMatureApproved&&window.rrMatureApproved()))return;
   panel.innerHTML=rrAdultFilmPicks.map((entry,i)=>`<article class="rr-mature-film" data-mature-index="${i}">
-   <div class="rr-mature-film-icon" aria-hidden="true">🎬</div>
+   <div class="rr-mature-film-icon">${rrArtworkImg(entry.name,entry.category,'poster','',entry.name+' ReelRadar cover')}</div>
    <h3>${rrEscape(entry.name)}</h3>
    <p class="meta">${rrEscape(entry.year)} · ${rrEscape(entry.category)}</p>
    <p class="rr-mature-rating">${rrEscape(entry.classification)}</p>
