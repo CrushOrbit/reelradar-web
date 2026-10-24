@@ -803,6 +803,7 @@ async function rrLoadGlobalDiscovery(){
  }));
  rrGlobalTitles=all;
  rrGlobalReady=true;
+ window.dispatchEvent(new Event('rr-global-discovery-ready'));
  if(!search.value.trim()){
   titles.splice(0,titles.length,...all);
   render();
