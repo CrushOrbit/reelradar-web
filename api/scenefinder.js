@@ -9,20 +9,23 @@ export default async function handler(req, res) {
   }
 
   try {
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
       return res.status(503).json({
-        error: "SceneFinder AI is not configured."
+        error: "SceneFinder Gemini API is not configured."
       });
     }
 
     const { image, clues = "" } = req.body || {};
 
-    if (
-      typeof image !== "string" ||
-      !/^data:image\/(jpeg|png|webp);base64,/.test(image)
-    ) {
+    const match =
+      typeof image === "string" &&
+      image.match(
+        /^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/
+      );
+
+    if (!match) {
       return res.status(400).json({
         error: "Please upload a JPEG, PNG or WebP screenshot."
       });
@@ -34,40 +37,54 @@ export default async function handler(req, res) {
       });
     }
 
+    const mimeType = `image/${match[1]}`;
+    const base64Image = match[2];
+
     const response = await fetch(
-      "https://api.openai.com/v1/responses",
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
       {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          "x-goog-api-key": apiKey
         },
         body: JSON.stringify({
-          model: "gpt-4.1-mini",
-          max_output_tokens: 450,
-          input: [
-            {
-              role: "system",
-              content:
-                "You are ReelRadar SceneFinder. Analyze screenshots from movies and television shows. Suggest up to three possible titles. Do not claim certainty when uncertain. Do not identify real people from their faces. Use visual clues such as setting, costumes, text and objects, together with the user's written clues. If evidence is insufficient, say so. Respond concisely."
-            },
-            {
-              role: "user",
-              content: [
-                {
-                  type: "input_text",
-                  text:
-                    "Find possible movie or TV series matches. Clues: " +
-                    String(clues).slice(0, 1000)
-                },
-                {
-                  type: "input_image",
-                  image_url: image,
-                  detail: "low"
+          systemInstruction: {
+            parts: [{
+              text:
+                "You are ReelRadar SceneFinder. Analyze screenshots " +
+                "from movies and television shows worldwide. " +
+                "Suggest up to three possible titles. " +
+                "Do not identify real people from their faces. " +
+                "Use visual clues such as setting, costumes, " +
+                "subtitles, text and objects. " +
+                "Never claim certainty without sufficient evidence. " +
+                "If evidence is insufficient, say so. " +
+                "Respond concisely."
+            }]
+          },
+          contents: [{
+            role: "user",
+            parts: [
+              {
+                text:
+                  "Identify possible movie or TV show matches " +
+                  "for this screenshot. Include international " +
+                  "films and series when relevant. Clues: " +
+                  String(clues).slice(0, 1000)
+              },
+              {
+                inline_data: {
+                  mime_type: mimeType,
+                  data: base64Image
                 }
-              ]
-            }
-          ]
+              }
+            ]
+          }],
+          generationConfig: {
+            maxOutputTokens: 450,
+            temperature: 0.2
+          }
         })
       }
     );
@@ -76,29 +93,33 @@ export default async function handler(req, res) {
 
     if (!response.ok) {
       console.error(
-        "SceneFinder OpenAI error:",
+        "SceneFinder Gemini error:",
         response.status,
-        data?.error?.code
+        data?.error?.status,
+        data?.error?.message
       );
 
       return res.status(502).json({
-        error: "SceneFinder AI is temporarily unavailable."
+        error:
+          response.status === 429
+            ? "SceneFinder is busy or has reached its AI usage limit. Please try again later."
+            : "SceneFinder AI is temporarily unavailable."
       });
     }
 
-    const answer =
-      data.output_text ||
-      (data.output || [])
-        .flatMap(item => item.content || [])
-        .filter(item => item.type === "output_text")
-        .map(item => item.text)
-        .join("\n");
+    const answer = (data.candidates || [])
+      .flatMap(candidate => candidate.content?.parts || [])
+      .filter(part => typeof part.text === "string")
+      .map(part => part.text)
+      .join("\n")
+      .trim();
 
     return res.status(200).json({
       success: true,
       answer: answer || "No confident match found.",
       verified: false
     });
+
   } catch (error) {
     console.error("SceneFinder error:", error.message);
 
