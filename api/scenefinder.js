@@ -1,4 +1,99 @@
 
+const MODEL = "gemini-3.8-flash";
+
+const GEMINI_URL =
+  `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
+
+const MAX_ATTEMPTS = 3;
+const REQUEST_TIMEOUT_MS = 20000;
+
+const sleep = (ms) =>
+  new Promise((resolve) => setTimeout(resolve, ms));
+
+async function callGemini(apiKey, payload) {
+  let lastStatus = 503;
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const controller = new AbortController();
+
+    const timeout = setTimeout(
+      () => controller.abort(),
+      REQUEST_TIMEOUT_MS
+    );
+
+    try {
+      const response = await fetch(GEMINI_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": apiKey
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
+
+      const raw = await response.text();
+
+      let data;
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        data = {};
+      }
+
+      if (response.ok) {
+        return { success: true, data };
+      }
+
+      lastStatus = response.status;
+
+      console.error(
+        "SceneFinder Gemini error:",
+        response.status,
+        data?.error?.status || "UNKNOWN",
+        data?.error?.message || "No details",
+        `Attempt ${attempt}/${MAX_ATTEMPTS}`
+      );
+
+      const retryable = [429, 500, 502, 503, 504]
+        .includes(response.status);
+
+      if (!retryable) {
+        return {
+          success: false,
+          status: response.status
+        };
+      }
+
+    } catch (error) {
+      lastStatus = 503;
+
+      console.error(
+        "SceneFinder network error:",
+        error?.message || "Unknown error",
+        `Attempt ${attempt}/${MAX_ATTEMPTS}`
+      );
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    if (attempt < MAX_ATTEMPTS) {
+      const delay = 1000 * Math.pow(2, attempt - 1);
+
+      console.log(
+        `SceneFinder retrying in ${delay}ms`
+      );
+
+      await sleep(delay);
+    }
+  }
+
+  return {
+    success: false,
+    status: lastStatus
+  };
+}
+
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
 
@@ -40,74 +135,72 @@ export default async function handler(req, res) {
     const mimeType = `image/${match[1]}`;
     const base64Image = match[2];
 
-    const model = "gemini-3.8-flash";
+    const payload = {
+      systemInstruction: {
+        parts: [{
+          text:
+            "You are ReelRadar SceneFinder. " +
+            "Analyze screenshots from movies and television " +
+            "shows worldwide. Suggest up to three possible " +
+            "titles. Do not identify real people from faces. " +
+            "Use visual clues including costumes, locations, " +
+            "subtitles, dialogue, text and objects. " +
+            "Consider Hollywood, Bollywood, Korean dramas, " +
+            "Chinese dramas, African cinema and other " +
+            "international productions. " +
+            "Never claim certainty without sufficient evidence. " +
+            "If evidence is insufficient, say so. " +
+            "Respond concisely."
+        }]
+      },
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-goog-api-key": apiKey
-        },
-        body: JSON.stringify({
-          systemInstruction: {
-            parts: [{
-              text:
-                "You are ReelRadar SceneFinder. Analyze screenshots " +
-                "from movies and television shows worldwide. " +
-                "Suggest up to three possible titles. " +
-                "Do not identify real people from their faces. " +
-                "Use visual clues such as setting, costumes, " +
-                "subtitles, text and objects. " +
-                "Never claim certainty without sufficient evidence. " +
-                "If evidence is insufficient, say so. " +
-                "Respond concisely."
-            }]
+      contents: [{
+        role: "user",
+        parts: [
+          {
+            text:
+              "Identify possible movie or TV show matches " +
+              "for this screenshot. Include international " +
+              "films and series when relevant. Clues: " +
+              String(clues).slice(0, 1000)
           },
-          contents: [{
-            role: "user",
-            parts: [
-              {
-                text:
-                  "Identify possible movie or TV show matches " +
-                  "for this screenshot. Include international " +
-                  "films and series when relevant. Clues: " +
-                  String(clues).slice(0, 1000)
-              },
-              {
-                inline_data: {
-                  mime_type: mimeType,
-                  data: base64Image
-                }
-              }
-            ]
-          }],
-          generationConfig: {
-            maxOutputTokens: 450,
-            temperature: 0.2
+          {
+            inline_data: {
+              mime_type: mimeType,
+              data: base64Image
+            }
           }
-        })
+        ]
+      }],
+
+      generationConfig: {
+        maxOutputTokens: 450,
+        temperature: 0.2
       }
-    );
+    };
 
-    const data = await response.json();
+    const result = await callGemini(apiKey, payload);
 
-    if (!response.ok) {
-      console.error(
-        "SceneFinder Gemini error:",
-        response.status,
-        data?.error?.status,
-        data?.error?.message
-      );
+    if (!result.success) {
+      const status = result.status;
+
+      if ([429, 500, 502, 503, 504].includes(status)) {
+        return res.status(503).json({
+          error:
+            "SceneFinder AI is currently busy. " +
+            "Automatic retries were unsuccessful. " +
+            "Please try again shortly."
+        });
+      }
 
       return res.status(502).json({
         error:
-          response.status === 429
-            ? "SceneFinder is busy or has reached its AI usage limit. Please try again later."
-            : "SceneFinder AI is temporarily unavailable."
+          "SceneFinder AI could not process this request. " +
+          "Please try again later."
       });
     }
+
+    const data = result.data;
 
     const answer = (data.candidates || [])
       .flatMap(candidate => candidate.content?.parts || [])
@@ -123,7 +216,10 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error("SceneFinder error:", error.message);
+    console.error(
+      "SceneFinder error:",
+      error?.message || "Unknown error"
+    );
 
     return res.status(500).json({
       error: "Unable to analyze this screenshot."
