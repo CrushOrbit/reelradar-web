@@ -323,8 +323,6 @@ async function recognize(imageData, clues, apiKey) {
   };
 }
 
-// Convert a movie poster path into an image URL.
-// Full HTTPS image URLs are preserved.
 function getPosterUrl(posterPath) {
   if (
     typeof posterPath !== "string" ||
@@ -349,7 +347,6 @@ function getPosterUrl(posterPath) {
   return null;
 }
 
-// Look up movie or TV information using AMODB.
 async function lookupAmodb(
   title,
   type,
@@ -475,7 +472,6 @@ async function lookupAmodb(
   }
 }
 
-// Find metadata for the possible titles.
 async function searchCandidates(
   candidates,
   apiKey
@@ -510,7 +506,6 @@ async function searchCandidates(
   );
 }
 
-// Optional Google Search verification.
 async function googleVerify(
   recognition,
   clues,
@@ -600,7 +595,6 @@ Do not invent sources.
   };
 }
 
-// Build the human-readable SceneFinder result.
 function buildAnswer(
   recognition,
   results,
@@ -709,7 +703,6 @@ function buildAnswer(
   return lines.join("\n\n");
 }
 
-// Main Vercel serverless API handler.
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
 
@@ -867,9 +860,6 @@ export default async function handler(req, res) {
       visibleMismatch ||
       !best?.match;
 
-    // Google verification is optional.
-    // SceneFinder can still return a result
-    // when Google Search is unavailable.
     const google = needsResearch
       ? await googleVerify(
           recognition,
@@ -885,7 +875,6 @@ export default async function handler(req, res) {
       Boolean(amodbKey)
     );
 
-    // Prefer metadata for the first candidate.
     const primaryMatch =
       results[0]?.match || null;
 
@@ -893,7 +882,6 @@ export default async function handler(req, res) {
       .map(x => x.match)
       .filter(Boolean);
 
-    // Return a poster URL for the frontend.
     const posterUrl =
       primaryMatch?.posterUrl ||
       metadataMatches
@@ -924,20 +912,17 @@ export default async function handler(req, res) {
 
       confidence: recognition.confidence,
 
-      // Poster fields for the homepage.
       posterUrl,
       poster: posterUrl,
       poster_path:
         primaryMatch?.poster_path || null,
 
-      // Movie information.
       overview:
         primaryMatch?.overview || null,
 
       movieId:
         primaryMatch?.id || null,
 
-      // Identification metadata.
       verified: false,
       model: MODEL,
       fallbackUsed: false,
