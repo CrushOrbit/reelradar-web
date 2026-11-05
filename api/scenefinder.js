@@ -1,228 +1,321 @@
 
-const MODEL = "gemini-3.8-flash";
+const PRIMARY_MODEL = "gemini-3.8-flash";
+const BACKUP_MODEL = "gemini-3.5-flash-lite";
 
-const GEMINI_URL =
-  `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
+const RETRY_DELAYS = [1000, 2000];
+const REQUEST_TIMEOUT_MS = 18000;
 
-const MAX_ATTEMPTS = 3;
-const REQUEST_TIMEOUT_MS = 20000;
-
-const sleep = (ms) =>
+const wait = (ms) =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
-async function callGemini(apiKey, payload) {
-  let lastStatus = 503;
+function extractText(data) {
+  return (data?.candidates || [])
+    .flatMap((candidate) => candidate?.content?.parts || [])
+    .filter((part) => typeof part?.text === "string")
+    .map((part) => part.text)
+    .join("\n")
+    .trim();
+}
 
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-    const controller = new AbortController();
+async function callGemini(model, image, clues, apiKey) {
+  const match = image.match(
+    /^data:(image\/(?:jpeg|jpg|png|webp));base64,([A-Za-z0-9+/=\s]+)$/
+  );
 
-    const timeout = setTimeout(
-      () => controller.abort(),
-      REQUEST_TIMEOUT_MS
-    );
+  if (!match) {
+    return {
+      success: false,
+      retryable: false,
+      status: 400,
+      error: "Invalid image format",
+    };
+  }
 
-    try {
-      const response = await fetch(GEMINI_URL, {
+  const mimeType =
+    match[1] === "image/jpg" ? "image/jpeg" : match[1];
+
+  const prompt = [
+    "You are SceneFinder, a movie and television scene identification assistant.",
+    "Analyze this screenshot and identify the most likely movie or TV show.",
+    "Use actors, clothing, setting, visual clues, and any visible text.",
+    "Do not claim certainty when the image is ambiguous.",
+    "If you cannot identify it reliably, provide plausible candidates.",
+    "Respond clearly with the likely title, year if known, and a short explanation.",
+    clues ? `Additional user clues: ${clues}` : "",
+  ].filter(Boolean).join("\n");
+
+  const controller = new AbortController();
+  const timeout = setTimeout(
+    () => controller.abort(),
+    REQUEST_TIMEOUT_MS
+  );
+
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+      {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-goog-api-key": apiKey
+          "x-goog-api-key": apiKey,
         },
-        body: JSON.stringify(payload),
-        signal: controller.signal
-      });
-
-      const raw = await response.text();
-
-      let data;
-      try {
-        data = JSON.parse(raw);
-      } catch {
-        data = {};
+        body: JSON.stringify({
+          contents: [
+            {
+              role: "user",
+              parts: [
+                { text: prompt },
+                {
+                  inline_data: {
+                    mime_type: mimeType,
+                    data: match[2].replace(/\s/g, ""),
+                  },
+                },
+              ],
+            },
+          ],
+          generationConfig: {
+            temperature: 0.2,
+            maxOutputTokens: 700,
+          },
+        }),
+        signal: controller.signal,
       }
+    );
 
-      if (response.ok) {
-        return { success: true, data };
-      }
+    const data = await response.json().catch(() => ({}));
 
-      lastStatus = response.status;
+    if (!response.ok) {
+      const message =
+        data?.error?.message || "Unknown Gemini error";
 
       console.error(
-        "SceneFinder Gemini error:",
-        response.status,
-        data?.error?.status || "UNKNOWN",
-        data?.error?.message || "No details",
-        `Attempt ${attempt}/${MAX_ATTEMPTS}`
+        `SceneFinder ${model}: ${response.status} ${message.slice(0, 400)}`
       );
 
-      const retryable = [429, 500, 502, 503, 504]
-        .includes(response.status);
-
-      if (!retryable) {
-        return {
-          success: false,
-          status: response.status
-        };
-      }
-
-    } catch (error) {
-      lastStatus = 503;
-
-      console.error(
-        "SceneFinder network error:",
-        error?.message || "Unknown error",
-        `Attempt ${attempt}/${MAX_ATTEMPTS}`
-      );
-    } finally {
-      clearTimeout(timeout);
+      return {
+        success: false,
+        status: response.status,
+        retryable: [429, 500, 502, 503, 504].includes(
+          response.status
+        ),
+        error: message,
+      };
     }
 
-    if (attempt < MAX_ATTEMPTS) {
-      const delay = 1000 * Math.pow(2, attempt - 1);
+    const answer = extractText(data);
 
-      console.log(
-        `SceneFinder retrying in ${delay}ms`
+    if (!answer) {
+      console.error(`SceneFinder ${model}: Empty response`);
+      return {
+        success: false,
+        retryable: true,
+        error: "No identification returned",
+      };
+    }
+
+    return {
+      success: true,
+      answer,
+      model,
+    };
+  } catch (error) {
+    console.error(
+      `SceneFinder ${model} request failed:`,
+      error?.message
+    );
+
+    return {
+      success: false,
+      retryable: true,
+      error:
+        error?.name === "AbortError"
+          ? "AI request timed out"
+          : "AI connection failed",
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function tryModel(model, image, clues, apiKey) {
+  for (let attempt = 0; attempt <= RETRY_DELAYS.length; attempt++) {
+    console.log(
+      `SceneFinder ${model} attempt ${attempt + 1}`
+    );
+
+    const result = await callGemini(
+      model,
+      image,
+      clues,
+      apiKey
+    );
+
+    if (result.success) return result;
+
+    if (!result.retryable) return result;
+
+    // Quota exhaustion: switch models rather than retrying
+    // the same model repeatedly.
+    if (result.status === 429) {
+      console.warn(
+        `SceneFinder ${model}: quota/rate limit; switching`
       );
+      return result;
+    }
 
-      await sleep(delay);
+    if (attempt < RETRY_DELAYS.length) {
+      const delay = RETRY_DELAYS[attempt];
+      console.log(
+        `SceneFinder ${model} retrying in ${delay}ms`
+      );
+      await wait(delay);
     }
   }
 
   return {
     success: false,
-    status: lastStatus
+    retryable: true,
+    error: "Model unavailable after retries",
   };
 }
 
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "POST, OPTIONS"
+  );
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization"
+  );
+
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
 
   if (req.method !== "POST") {
     return res.status(405).json({
-      error: "Method not allowed"
+      error: "Method not allowed",
+    });
+  }
+
+  const apiKey = process.env.GEMINI_API_KEY;
+
+  if (!apiKey) {
+    console.error("SceneFinder: GEMINI_API_KEY missing");
+    return res.status(503).json({
+      error: "SceneFinder is not configured",
     });
   }
 
   try {
-    const apiKey = process.env.GEMINI_API_KEY;
+    let body = req.body;
 
-    if (!apiKey) {
-      return res.status(503).json({
-        error: "SceneFinder Gemini API is not configured."
-      });
+    if (typeof body === "string") {
+      body = JSON.parse(body);
     }
 
-    const { image, clues = "" } = req.body || {};
+    const { image, clues = "" } = body || {};
 
-    const match =
-      typeof image === "string" &&
-      image.match(
-        /^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/
-      );
-
-    if (!match) {
+    if (typeof image !== "string") {
       return res.status(400).json({
-        error: "Please upload a JPEG, PNG or WebP screenshot."
+        error: "Please upload a screenshot",
       });
     }
 
-    if (image.length > 11_000_000) {
+    if (typeof clues !== "string") {
+      return res.status(400).json({
+        error: "Invalid clues",
+      });
+    }
+
+    if (image.length > 6_000_000) {
       return res.status(413).json({
-        error: "Image is too large. Maximum size is 8 MB."
+        error: "Image too large. Use a smaller screenshot.",
       });
     }
 
-    const mimeType = `image/${match[1]}`;
-    const base64Image = match[2];
-
-    const payload = {
-      systemInstruction: {
-        parts: [{
-          text:
-            "You are ReelRadar SceneFinder. " +
-            "Analyze screenshots from movies and television " +
-            "shows worldwide. Suggest up to three possible " +
-            "titles. Do not identify real people from faces. " +
-            "Use visual clues including costumes, locations, " +
-            "subtitles, dialogue, text and objects. " +
-            "Consider Hollywood, Bollywood, Korean dramas, " +
-            "Chinese dramas, African cinema and other " +
-            "international productions. " +
-            "Never claim certainty without sufficient evidence. " +
-            "If evidence is insufficient, say so. " +
-            "Respond concisely."
-        }]
-      },
-
-      contents: [{
-        role: "user",
-        parts: [
-          {
-            text:
-              "Identify possible movie or TV show matches " +
-              "for this screenshot. Include international " +
-              "films and series when relevant. Clues: " +
-              String(clues).slice(0, 1000)
-          },
-          {
-            inline_data: {
-              mime_type: mimeType,
-              data: base64Image
-            }
-          }
-        ]
-      }],
-
-      generationConfig: {
-        maxOutputTokens: 450,
-        temperature: 0.2
-      }
-    };
-
-    const result = await callGemini(apiKey, payload);
-
-    if (!result.success) {
-      const status = result.status;
-
-      if ([429, 500, 502, 503, 504].includes(status)) {
-        return res.status(503).json({
-          error:
-            "SceneFinder AI is currently busy. " +
-            "Automatic retries were unsuccessful. " +
-            "Please try again shortly."
-        });
-      }
-
-      return res.status(502).json({
-        error:
-          "SceneFinder AI could not process this request. " +
-          "Please try again later."
+    if (clues.length > 1000) {
+      return res.status(400).json({
+        error: "Clues are too long",
       });
     }
 
-    const data = result.data;
+    if (
+      !/^data:image\/(?:jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=\s]+$/.test(
+        image
+      )
+    ) {
+      return res.status(400).json({
+        error: "Unsupported image format",
+      });
+    }
 
-    const answer = (data.candidates || [])
-      .flatMap(candidate => candidate.content?.parts || [])
-      .filter(part => typeof part.text === "string")
-      .map(part => part.text)
-      .join("\n")
-      .trim();
-
-    return res.status(200).json({
-      success: true,
-      answer: answer || "No confident match found.",
-      verified: false
-    });
-
-  } catch (error) {
-    console.error(
-      "SceneFinder error:",
-      error?.message || "Unknown error"
+    // First try Gemini 3.8 Flash.
+    const primary = await tryModel(
+      PRIMARY_MODEL,
+      image,
+      clues,
+      apiKey
     );
 
+    if (primary.success) {
+      console.log("SceneFinder primary succeeded");
+      return res.status(200).json({
+        success: true,
+        answer: primary.answer,
+        verified: false,
+        model: primary.model,
+        fallbackUsed: false,
+      });
+    }
+
+    // Do not use a fallback for permanent request errors.
+    if (!primary.retryable) {
+      return res.status(502).json({
+        error: "SceneFinder AI request failed",
+      });
+    }
+
+    console.warn("SceneFinder switching to backup model");
+
+    // Try the cheaper Gemini 3.5 Flash-Lite.
+    const backup = await tryModel(
+      BACKUP_MODEL,
+      image,
+      clues,
+      apiKey
+    );
+
+    if (backup.success) {
+      console.log("SceneFinder backup succeeded");
+      return res.status(200).json({
+        success: true,
+        answer: backup.answer,
+        verified: false,
+        model: backup.model,
+        fallbackUsed: true,
+      });
+    }
+
+    console.error(
+      "SceneFinder: both models unavailable",
+      primary.status,
+      backup.status
+    );
+
+    return res.status(503).json({
+      error:
+        "SceneFinder AI is currently unavailable. Please try again shortly.",
+    });
+  } catch (error) {
+    console.error("SceneFinder handler error:", error?.message);
+
     return res.status(500).json({
-      error: "Unable to analyze this screenshot."
+      error: "SceneFinder encountered an unexpected error",
     });
   }
 }
