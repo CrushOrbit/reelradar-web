@@ -257,7 +257,39 @@ header{background:rgba(11,13,22,.96);backdrop-filter:blur(16px)}
 .rr-v2-bottom a span{font-size:20px}
 }
 @media(max-width:390px){.rr-v2-hero{grid-template-columns:minmax(0,1fr) 75px;padding:16px!important}.rr-v2-hero h2{font-size:28px}.rr-v2-poster-placeholder{min-height:112px}}
-</style></head>
+</style>
+<style id="rr-v2-combined-polish">
+/* Compact cinematic home, preserving the existing discovery feed */
+.rr-v2-hero{position:relative;overflow:hidden;border-color:#403344;box-shadow:0 18px 55px #0005}
+.rr-v2-hero:before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 70% 40%,#ff547822,transparent 60%)}
+.rr-v2-poster-wall img{display:block;object-position:center}
+.rr-v2-links a{border:1px solid #454052;background:#242435}
+.rr-v2-actions a:focus-visible,.rr-v2-links a:focus-visible{outline:3px solid #fff;outline-offset:3px}
+.rr-scene-result .rr-result-card{display:grid;grid-template-columns:112px minmax(0,1fr);gap:18px;align-items:start;margin:14px 0;padding:18px;border:1px solid #474153;border-radius:18px;background:linear-gradient(140deg,#242231,#161720)}
+.rr-result-poster{width:112px;aspect-ratio:2/3;object-fit:cover;border-radius:12px;background:#292c39}
+.rr-result-fallback{width:112px;aspect-ratio:2/3;border-radius:12px;background:linear-gradient(150deg,#4a2a4a,#222b43);display:flex;align-items:center;justify-content:center;text-align:center;font-weight:800;color:#ffbed0;padding:9px;box-sizing:border-box}
+.rr-result-info{min-width:0}
+.rr-result-info h4{font-size:clamp(19px,3vw,25px);line-height:1.2;margin:0 0 9px;color:white}
+.rr-result-meta{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.rr-result-meta span{display:inline-flex;padding:5px 9px;border:1px solid #4b4658;border-radius:99px;font-size:12px;color:#ddd7e5}
+.rr-result-info p{margin:9px 0;color:#cfcbd9;font-size:14px;line-height:1.55}
+.rr-result-info button{margin-top:8px;white-space:normal;text-align:center}
+.rr-scene-result>h3{font-size:clamp(19px,4vw,25px);margin:22px 0 12px}
+.rr-result-caution{font-size:12px;color:#c7b7c5}
+@media(max-width:760px){
+.rr-v2-hero{grid-template-columns:minmax(0,1fr) 92px!important;padding:18px!important}
+.rr-v2-hero h2{font-size:clamp(27px,7vw,37px)!important}
+.rr-v2-links{display:flex;flex-wrap:wrap}
+.rr-v2-actions a,.rr-v2-links a{font-size:11px!important;padding:9px 10px!important}
+.rr-v2-bottom{padding-left:5px;padding-right:5px}
+.rr-v2-bottom a{min-width:0!important;max-width:20%;overflow:hidden}
+.rr-scene-result .rr-result-card{grid-template-columns:90px minmax(0,1fr);gap:12px;padding:12px}
+.rr-result-poster,.rr-result-fallback{width:90px}
+.rr-result-info h4{font-size:18px}
+}
+@media(max-width:350px){.rr-scene-result .rr-result-card{grid-template-columns:76px minmax(0,1fr)}.rr-result-poster,.rr-result-fallback{width:76px}}
+</style>
+</head>
 <body>
 <header><div class="nav"><a aria-label="ReelRadar home" class="rr-brand" href="#top"><div class="logo">Reel<span>Radar</span></div></a><button aria-controls="rrMainNav" aria-expanded="false" aria-label="Open navigation" class="rr-menu-toggle" id="rrMenuToggle">☰</button><nav id="rrMainNav"><a href="#trending">Discover</a><a href="#movies">Movies</a><a href="#series">TV Shows</a><a href="#theaters">In Theaters</a><a href="#upcoming-movies">Upcoming Movies</a><a href="#upcoming-series">Upcoming Series</a><a href="#news">News</a><a href="#gossip">Gossip</a><a href="#podcasts">Podcasts</a><a href="#kids">Kids &amp; Family</a><a href="#pride">🏳️‍🌈 Pride</a><a href="#adults">18+ Mature</a><a href="#pride">🏳️‍🌈 Pride</a><a href="#adults">18+ Mature</a><a href="#watchlist">My Watchlist</a><a href="#scenefinder">SceneFinder</a></nav><button class="rr-account-trigger" id="rrAccountOpen" type="button">Sign in / Join</button><input aria-label="Search movies and shows" class="search" id="search" placeholder="Search movies &amp; shows…"/></div></header>
 <main id="top">
@@ -1297,21 +1329,36 @@ window.rrMatureApproved=()=>approved;
    const entries=candidates.length?candidates:(main?[{title:main,year:data.year,reason:description,confidence:data.confidence}]:(parsedTitle?[{title:parsedTitle,year:parsedYear,reason:answerText}]:[]));
    if(!entries.length){show(typeof data.result==='string'?data.result:(typeof data.answer==='string'?data.answer:'The service returned no identifiable title. Try a clearer screenshot or add scene clues.'));return;}
    const heading=document.createElement('h3');heading.textContent='Possible matches (not verified)';result.append(heading);
-   entries.slice(0,5).forEach((item)=>{
-    if(typeof item==='string')item={title:item};
+   entries.slice(0,5).forEach((rawItem,index)=>{
+    const item=typeof rawItem==='string'?{title:rawItem}:rawItem;
     const title=item.title||item.name||item.movie||item.show;
     if(!title)return;
-    const card=document.createElement('div');card.className='feature-card';card.style.margin='10px 0';card.style.cssText+=';display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap';
-    const match=matches.find(m=>String(m.title||'').toLowerCase()===String(title).toLowerCase())||matches[0];
-    const rawPoster=match?.posterUrl||match?.poster_url||match?.poster||match?.poster_path||item.posterUrl||item.poster_path;
+    const match=matches.find(m=>String(m.title||'').toLowerCase()===String(title).toLowerCase())||(index===0?matches[0]:null);
+    const card=document.createElement('article');card.className='rr-result-card';
+    const rawPoster=match?.posterUrl||match?.poster_url||match?.poster||match?.poster_path||item.posterUrl||item.poster_path||(index===0?data.posterUrl||data.poster:null);
     const poster=typeof rawPoster==='string'?(rawPoster.startsWith('/')?'https://image.tmdb.org/t/p/w342'+rawPoster:rawPoster):'';
-    if(poster&&/^https:\/\//.test(poster)){const img=document.createElement('img');img.src=poster;img.alt=String(title)+' poster';img.loading='lazy';img.referrerPolicy='no-referrer';img.style.cssText='width:120px;max-width:35%;border-radius:10px;object-fit:cover';img.onerror=()=>img.remove();card.append(img);}
-    const details=document.createElement('div');details.style.cssText='flex:1;min-width:170px';card.append(details);
-    const h=document.createElement('strong');h.textContent=String(title)+(item.year?' ('+item.year+')':'');details.append(h);
+    if(/^https:\/\//.test(poster)){
+     const img=document.createElement('img');img.className='rr-result-poster';img.src=poster;img.alt=String(title)+' movie or TV poster';img.loading='lazy';img.referrerPolicy='no-referrer';
+     img.onerror=()=>{const fallback=document.createElement('div');fallback.className='rr-result-fallback';fallback.textContent='Poster unavailable';img.replaceWith(fallback);};
+     card.append(img);
+    }else{const fallback=document.createElement('div');fallback.className='rr-result-fallback';fallback.textContent='Poster unavailable';card.append(fallback);}
+    const details=document.createElement('div');details.className='rr-result-info';card.append(details);
+    const h=document.createElement('h4');h.textContent=String(title);details.append(h);
+    const meta=document.createElement('div');meta.className='rr-result-meta';
+    const year=item.year||match?.year||(index===0?data.year:null);
+    const type=item.type||match?.type||(index===0?data.type:null);
+    const confidence=item.confidence||(index===0?data.confidence:null);
+    [year, type==='tv'?'TV Series':type==='movie'?'Movie':null,confidence?'AI estimate: '+confidence:null].filter(Boolean).forEach(value=>{const pill=document.createElement('span');pill.textContent=String(value);meta.append(pill);});
+    details.append(meta);
+    const synopsis=match?.overview||item.overview||(index===0?data.overview:null);
+    if(synopsis){const p=document.createElement('p');p.textContent=String(synopsis).slice(0,420);details.append(p);}
     const reason=item.reason||item.explanation||item.description;
-    if(reason){const p=document.createElement('p');p.textContent=String(reason);details.append(p);}
-    const link=document.createElement('button');link.type='button';link.className='rr-action';link.style.marginTop='10px';link.textContent='Search ReelRadar for this title';link.addEventListener('click',()=>{const search=document.getElementById('search');if(search){search.value=String(title);location.hash='home';search.dispatchEvent(new Event('input',{bubbles:true}));}});details.append(link);result.append(card);
+    if(reason&&reason!==synopsis){const p=document.createElement('p');p.textContent=String(reason).slice(0,360);details.append(p);}
+    const link=document.createElement('button');link.type='button';link.className='rr-action';link.textContent='Explore this title on ReelRadar';
+    link.addEventListener('click',()=>{const search=document.getElementById('search');if(search){search.value=String(title);location.hash='home';search.dispatchEvent(new Event('input',{bubbles:true}));search.focus();}});
+    details.append(link);result.append(card);
    });
+   const caution=document.createElement('p');caution.className='rr-result-caution';caution.textContent='AI matches are suggestions, not verified scene identifications. Confirm the title before relying on a result.';result.append(caution);
    if(description&&candidates.length){const p=document.createElement('p');p.textContent=String(description);result.append(p);}
   }catch(err){show('Could not analyze screenshot: '+(err?.message||'Unknown error')+'. Please check the API deployment and try again.');}
   finally{working=false;button.disabled=false;button.textContent='Identify Scene ✦';}
