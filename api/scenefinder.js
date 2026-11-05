@@ -1,10 +1,17 @@
 
-const MODEL = "gemini-3.5-flash-lite";
-const SEARCH_MODEL = "gemini-3.8-flash";
+const MODEL = process.env.SCENEFINDER_MODEL || "gemini-3.5-flash-lite";
+const SEARCH_MODEL = process.env.SCENEFINDER_SEARCH_MODEL || "gemini-3.8-flash";
+// Optional comma-separated alternatives in Vercel, e.g. gemini-3.8-flash.
+// Models must be enabled for your Gemini API key.
+const FALLBACK_MODELS = (process.env.SCENEFINDER_FALLBACK_MODELS || SEARCH_MODEL)
+  .split(",")
+  .map(name => name.trim())
+  .filter(Boolean)
+  .filter(name => name !== MODEL);
 
-const API_TIMEOUT_MS = 20000;
+const API_TIMEOUT_MS = 12000;
 const MAX_ATTEMPTS = 2;
-const RETRY_DELAY_MS = 1500;
+const RETRY_DELAY_MS = 700;
 const COOLDOWN_MS = 60000;
 const MAX_IMAGE_LENGTH = 6000000;
 
@@ -253,74 +260,80 @@ async function geminiRequest(
 }
 
 async function recognize(imageData, clues, apiKey) {
-  for (
-    let attempt = 1;
-    attempt <= MAX_ATTEMPTS;
-    attempt++
-  ) {
-    const result = await geminiRequest(
-      MODEL,
-      [
-        { text: recognitionPrompt(clues) },
-        { inline_data: imageData }
-      ],
-      apiKey
-    );
+  const models = [...new Set([MODEL, ...FALLBACK_MODELS])].slice(0, 3);
+  let lastFailure = { success: false, status: 503, retryable: true };
 
-    if (result.success) {
-      const data = cleanJSON(result.text);
+  for (const [index, model] of models.entries()) {
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      const result = await geminiRequest(
+        model,
+        [
+          { text: recognitionPrompt(clues) },
+          { inline_data: imageData }
+        ],
+        apiKey
+      );
 
-      if (!data) {
+      if (result.success) {
+        const data = cleanJSON(result.text);
+
+        if (!data) {
+          lastFailure = {
+            success: false,
+            status: 502,
+            retryable: true
+          };
+          break;
+        }
+
         return {
-          success: false,
-          status: 502
+          success: true,
+          model,
+          fallbackUsed: index > 0,
+          imageType:
+            ["poster", "scene", "unknown"].includes(data.imageType)
+              ? data.imageType
+              : "unknown",
+          visibleTitle:
+            typeof data.visibleTitle === "string"
+              ? data.visibleTitle.trim().slice(0, 150)
+              : null,
+          candidates: sanitizeCandidates(data),
+          confidence:
+            ["High", "Medium", "Low"].includes(data.confidence)
+              ? data.confidence
+              : "Low",
+          visualEvidence:
+            String(data.visualEvidence || "").slice(0, 500)
         };
       }
 
-      return {
-        success: true,
-        imageType:
-          ["poster", "scene", "unknown"].includes(
-            data.imageType
-          )
-            ? data.imageType
-            : "unknown",
-        visibleTitle:
-          typeof data.visibleTitle === "string"
-            ? data.visibleTitle.trim().slice(0, 150)
-            : null,
-        candidates: sanitizeCandidates(data),
-        confidence:
-          ["High", "Medium", "Low"].includes(
-            data.confidence
-          )
-            ? data.confidence
-            : "Low",
-        visualEvidence:
-          String(data.visualEvidence || "")
-            .slice(0, 500)
-      };
-    }
+      lastFailure = result;
 
-    if (result.status === 429) {
-      cooldownUntil = Date.now() + COOLDOWN_MS;
-      return result;
-    }
+      if (result.status === 429) {
+        cooldownUntil = Date.now() + COOLDOWN_MS;
+        return result;
+      }
 
-    if (
-      !result.retryable ||
-      attempt === MAX_ATTEMPTS
-    ) {
-      return result;
-    }
+      if ([400, 401, 403].includes(result.status)) {
+        return result;
+      }
 
-    await sleep(RETRY_DELAY_MS);
+      // A missing/retired model can be skipped.
+      if (result.status === 404) break;
+
+      if (!result.retryable) break;
+
+      // Move to the fallback quickly after model overload.
+      if (result.status === 503) break;
+
+      if (attempt < MAX_ATTEMPTS) {
+        await sleep(RETRY_DELAY_MS * attempt);
+      }
+    }
   }
 
-  return {
-    success: false,
-    status: 503
-  };
+  return lastFailure;
 }
 
 function getPosterUrl(posterPath) {
@@ -924,8 +937,8 @@ export default async function handler(req, res) {
         primaryMatch?.id || null,
 
       verified: false,
-      model: MODEL,
-      fallbackUsed: false,
+      model: recognition.model,
+      fallbackUsed: recognition.fallbackUsed,
 
       searchGrounded:
         Boolean(google?.grounded),
