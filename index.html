@@ -289,6 +289,7 @@ header{background:rgba(11,13,22,.96);backdrop-filter:blur(16px)}
 }
 @media(max-width:350px){.rr-scene-result .rr-result-card{grid-template-columns:76px minmax(0,1fr)}.rr-result-poster,.rr-result-fallback{width:76px}}
 </style>
+<style id="rr-scene-discovery-v3">.rr-scene-result{overflow-wrap:anywhere}.rr-scene-result .rr-result-card{margin:12px 0}.rr-scene-result .rr-result-info{min-width:0}.rr-scene-result .rr-result-info p{line-height:1.5}.rr-scene-result .rr-result-caution{font-size:13px;color:#e7c6d1}.rr-scene-result ul{padding-left:20px}.rr-scene-result li{margin:7px 0}@media(max-width:450px){.rr-scene-result .rr-result-card{grid-template-columns:80px minmax(0,1fr);gap:10px}.rr-scene-result .rr-result-poster,.rr-scene-result .rr-result-fallback{width:80px}}</style>
 </head>
 <body>
 <header><div class="nav"><a aria-label="ReelRadar home" class="rr-brand" href="#top"><div class="logo">Reel<span>Radar</span></div></a><button aria-controls="rrMainNav" aria-expanded="false" aria-label="Open navigation" class="rr-menu-toggle" id="rrMenuToggle">☰</button><nav id="rrMainNav"><a href="#trending">Discover</a><a href="#movies">Movies</a><a href="#series">TV Shows</a><a href="#theaters">In Theaters</a><a href="#upcoming-movies">Upcoming Movies</a><a href="#upcoming-series">Upcoming Series</a><a href="#news">News</a><a href="#gossip">Gossip</a><a href="#podcasts">Podcasts</a><a href="#kids">Kids &amp; Family</a><a href="#pride">🏳️‍🌈 Pride</a><a href="#adults">18+ Mature</a><a href="#watchlist">My Watchlist</a><a href="#scenefinder">SceneFinder</a></nav><button class="rr-account-trigger" id="rrAccountOpen" type="button">Sign in / Join</button><input aria-label="Search movies and shows" class="search" id="search" placeholder="Search movies &amp; shows…"/></div></header>
@@ -1301,90 +1302,33 @@ window.rrMatureApproved=()=>approved;
  const file=document.getElementById('rrSceneFile'),preview=document.getElementById('rrScenePreview'),status=document.getElementById('rrSceneFileStatus'),clues=document.getElementById('rrSceneClues'),result=document.getElementById('rrSceneResult'),button=document.getElementById('rrSceneSearch');
  if(!file||!preview||!button)return;
  let objectUrl=null,working=false;
- const resetPreview=()=>{if(objectUrl){URL.revokeObjectURL(objectUrl);objectUrl=null;}preview.removeAttribute('src');preview.classList.remove('rr-visible');};
- const show=(message)=>{result.textContent=message;};
- document.querySelector('.rr-scene-drop')?.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();file.click();}});
- file.addEventListener('change',()=>{resetPreview();const f=file.files?.[0];if(!f){status.textContent='No screenshot selected.';return;}if(!['image/jpeg','image/png','image/webp'].includes(f.type)||f.size>8*1024*1024){status.textContent='Please choose a JPEG, PNG or WebP image no larger than 8 MB.';file.value='';return;}objectUrl=URL.createObjectURL(f);preview.src=objectUrl;preview.classList.add('rr-visible');status.textContent='Screenshot ready. It has not been uploaded. Tap Identify Scene to analyze it.';});
- document.getElementById('rrSceneClear')?.addEventListener('click',()=>{if(working)return;resetPreview();file.value='';clues.value='';status.textContent='Your screenshot is only uploaded when you press Identify Scene. Do not upload private or sensitive images.';show('Select a screenshot to get AI title suggestions.');});
- const readImage=async(f)=>{
-  const image=await createImageBitmap(f).catch(()=>null);
-  if(!image)throw new Error('Unable to decode screenshot. Try a different JPEG or PNG.');
-  try{
-   const maxSide=1280,scale=Math.min(1,maxSide/Math.max(image.width,image.height));
-   const canvas=document.createElement('canvas');
-   canvas.width=Math.max(1,Math.round(image.width*scale));
-   canvas.height=Math.max(1,Math.round(image.height*scale));
-   const ctx=canvas.getContext('2d');
-   if(!ctx)throw new Error('Image processing is unavailable in this browser.');
-   ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);
-   ctx.drawImage(image,0,0,canvas.width,canvas.height);
-   let dataUrl='';
-   for(const quality of [0.78,0.62,0.46,0.32]){
-    dataUrl=canvas.toDataURL('image/jpeg',quality);
-    if(dataUrl.length<=520000)break;
-   }
-   if(dataUrl.length>520000)throw new Error('This screenshot is too detailed to upload safely. Try cropping it first.');
-   return dataUrl;
-  }finally{image.close?.();}
- };
- button.addEventListener('click',async()=>{
-  if(working)return;
-  const f=file.files?.[0],q=clues.value.trim();
-  if(!f){show('Choose a screenshot first. You can also add written clues.');file.focus();return;}
-  if(!['image/jpeg','image/png','image/webp'].includes(f.type)||f.size>8*1024*1024){show('Please select a valid image under 8 MB.');return;}
-  working=true;button.disabled=true;button.textContent='Analyzing screenshot…';show('Uploading your screenshot securely for AI analysis. This may take a moment…');
-  try{
-   const dataUrl=await readImage(f);
-   status.textContent='Screenshot optimized for upload. Identifying scene…';
-   const response=await fetch('/api/scenefinder',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:dataUrl,imageData:dataUrl,imageBase64:dataUrl.split(',')[1],mimeType:'image/jpeg',clues:q})});
-   const data=await response.json().catch(()=>({}));
-   if(!response.ok)throw new Error(response.status===413?'Screenshot exceeded the server upload limit. Please crop the image and try again.':(data.error||data.message||('SceneFinder service returned '+response.status)));
-   result.replaceChildren();
-   const description=data.description||data.analysis||data.explanation||data.reason||'';
-   const candidates=Array.isArray(data.matches)?data.matches:Array.isArray(data.candidates)?data.candidates:Array.isArray(data.results)?data.results:[];
-   const main=data.title||data.movie||data.show||data.name||data.suggestion||data.identification;
-   const answerText=typeof data.answer==='string'?data.answer:'';
-   const parsedTitle=answerText.match(/(?:^|\n)Title:\s*(.+)/i)?.[1]?.trim();
-   const parsedYear=answerText.match(/(?:^|\n)Year:\s*(\d{4})/i)?.[1];
-   const matches=Array.isArray(data.metadataMatches)?data.metadataMatches:[];
-   const entries=candidates.length?candidates:(main?[{title:main,year:data.year,reason:description,confidence:data.confidence}]:(parsedTitle?[{title:parsedTitle,year:parsedYear,reason:answerText}]:[]));
-   if(!entries.length){show(typeof data.result==='string'?data.result:(typeof data.answer==='string'?data.answer:'The service returned no identifiable title. Try a clearer screenshot or add scene clues.'));return;}
-   const heading=document.createElement('h3');heading.textContent='Possible matches (not verified)';result.append(heading);
-   entries.slice(0,5).forEach((rawItem,index)=>{
-    const item=typeof rawItem==='string'?{title:rawItem}:rawItem;
-    const title=item.title||item.name||item.movie||item.show;
-    if(!title)return;
-    const match=matches.find(m=>String(m.title||'').toLowerCase()===String(title).toLowerCase())||(index===0?matches[0]:null);
-    const card=document.createElement('article');card.className='rr-result-card';
-    const rawPoster=match?.posterUrl||match?.poster_url||match?.poster||match?.poster_path||item.posterUrl||item.poster_path||(index===0?data.posterUrl||data.poster:null);
-    const poster=typeof rawPoster==='string'?(rawPoster.startsWith('/')?'https://image.tmdb.org/t/p/w342'+rawPoster:rawPoster):'';
-    if(/^https:\/\//.test(poster)){
-     const img=document.createElement('img');img.className='rr-result-poster';img.src=poster;img.alt=String(title)+' movie or TV poster';img.loading='lazy';img.referrerPolicy='no-referrer';
-     img.onerror=()=>{const fallback=document.createElement('div');fallback.className='rr-result-fallback';fallback.textContent='Poster unavailable';img.replaceWith(fallback);};
-     card.append(img);
-    }else{const fallback=document.createElement('div');fallback.className='rr-result-fallback';fallback.textContent='Poster unavailable';card.append(fallback);}
-    const details=document.createElement('div');details.className='rr-result-info';card.append(details);
-    const h=document.createElement('h4');h.textContent=String(title);details.append(h);
-    const meta=document.createElement('div');meta.className='rr-result-meta';
-    const year=item.year||match?.year||(index===0?data.year:null);
-    const type=item.type||match?.type||(index===0?data.type:null);
-    const confidence=item.confidence||(index===0?data.confidence:null);
-    [year, type==='tv'?'TV Series':type==='movie'?'Movie':null,confidence?'AI estimate: '+confidence:null].filter(Boolean).forEach(value=>{const pill=document.createElement('span');pill.textContent=String(value);meta.append(pill);});
-    details.append(meta);
-    const synopsis=match?.overview||item.overview||(index===0?data.overview:null);
-    if(synopsis){const p=document.createElement('p');p.textContent=String(synopsis).slice(0,420);details.append(p);}
-    const reason=item.reason||item.explanation||item.description;
-    if(reason&&reason!==synopsis){const p=document.createElement('p');p.textContent=String(reason).slice(0,360);details.append(p);}
-    const link=document.createElement('button');link.type='button';link.className='rr-action';link.textContent='Explore this title on ReelRadar';
-    link.addEventListener('click',()=>{const search=document.getElementById('search');if(search){search.value=String(title);location.hash='home';search.dispatchEvent(new Event('input',{bubbles:true}));search.focus();}});
-    details.append(link);result.append(card);
-   });
-   const caution=document.createElement('p');caution.className='rr-result-caution';caution.textContent='AI matches are suggestions, not verified scene identifications. Confirm the title before relying on a result.';result.append(caution);
-   if(description&&candidates.length){const p=document.createElement('p');p.textContent=String(description);result.append(p);}
-  }catch(err){show('Could not analyze screenshot: '+(err?.message||'Unknown error')+'. Please check the API deployment and try again.');}
-  finally{working=false;button.disabled=false;button.textContent='Identify Scene ✦';}
- });
- window.addEventListener('pagehide',resetPreview);
+ const show=t=>{result.textContent=t};
+ const reset=()=>{if(objectUrl)URL.revokeObjectURL(objectUrl);objectUrl=null;preview.removeAttribute('src');preview.classList.remove('rr-visible')};
+ document.querySelector('.rr-scene-drop')?.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();file.click()}});
+ file.addEventListener('change',()=>{reset();const f=file.files?.[0];if(!f)return;if(!['image/jpeg','image/png','image/webp'].includes(f.type)||f.size>8*1024*1024){status.textContent='Choose a JPG, PNG or WebP under 8 MB.';file.value='';return}objectUrl=URL.createObjectURL(f);preview.src=objectUrl;preview.classList.add('rr-visible');status.textContent='Screenshot ready. It uploads only after you tap Identify Scene.'});
+ document.getElementById('rrSceneClear')?.addEventListener('click',()=>{if(working)return;reset();file.value='';clues.value='';show('Select a screenshot to find possible titles.');status.textContent='No screenshot selected.'});
+ async function compress(f){const img=await createImageBitmap(f);try{const scale=Math.min(1,1280/Math.max(img.width,img.height));const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(img.width*scale));canvas.height=Math.max(1,Math.round(img.height*scale));const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0,canvas.width,canvas.height);for(const q of [.78,.62,.46,.32]){const data=canvas.toDataURL('image/jpeg',q);if(data.length<520000)return data}throw Error('Image too large; crop it and retry.')}finally{img.close?.()}}
+ const text=(tag,content,cls)=>{const el=document.createElement(tag);el.textContent=content;if(cls)el.className=cls;return el};
+ function render(data){result.replaceChildren();const uncertain=data.identificationUncertain!==false;const title=data.title;
+  result.append(text('h3',title&&!uncertain?'Best supported match':'SceneFinder results'));
+  result.append(text('p',uncertain?'No scene identity was verified. Explore the possible matches below, or try another frame.':'Search evidence supports this candidate, but please confirm the scene independently.','rr-result-caution'));
+  const entries=Array.isArray(data.possibleMatches)?data.possibleMatches:[];
+  const list=entries.length?entries:(title?[{title,year:data.year,type:data.type,posterUrl:data.posterUrl,overview:data.overview,verified:!uncertain}]:[]);
+  for(const item of list.slice(0,6)){if(!item?.title)continue;const card=document.createElement('article');card.className='rr-result-card';const raw=item.posterUrl||item.poster_path||'';const url=raw.startsWith('/')?'https://image.tmdb.org/t/p/w342'+raw:raw;
+   if(/^https:\/\//.test(url)){const img=document.createElement('img');img.className='rr-result-poster';img.src=url;img.alt='Poster for '+item.title;img.loading='lazy';img.onerror=()=>img.replaceWith(text('div','Poster unavailable','rr-result-fallback'));card.append(img)}else card.append(text('div','Poster unavailable','rr-result-fallback'));
+   const info=document.createElement('div');info.className='rr-result-info';info.append(text('h4',item.title));const meta=document.createElement('div');meta.className='rr-result-meta';for(const val of [item.year,item.type==='tv'?'TV Series':item.type==='movie'?'Movie':null,item.verified?'Search-supported':'Unverified suggestion'])if(val)meta.append(text('span',String(val)));info.append(meta);
+   if(item.overview)info.append(text('p',item.overview.slice(0,350)));
+   if(item.reason)info.append(text('p',item.reason.slice(0,350)));
+   const b=text('button','Explore this title on ReelRadar','rr-action');b.type='button';b.addEventListener('click',()=>{const search=document.getElementById('search');if(search){search.value=item.title;location.hash='home';search.dispatchEvent(new Event('input',{bubbles:true}));search.focus()}});info.append(b);card.append(info);result.append(card)
+  }
+  if(!list.length)result.append(text('p','No candidates found. Try a different frame, a short dialogue quote, or the original clip link.'));
+  if(data.visualEvidence)result.append(text('p','Scene details: '+data.visualEvidence));
+  if(data.verificationEvidence)result.append(text('p','Evidence: '+data.verificationEvidence));
+  const sources=(Array.isArray(data.sources)?data.sources:[]).filter(x=>typeof x==='string'&&/^https:\/\//.test(x));if(sources.length){result.append(text('h4','Sources to review'));const ul=document.createElement('ul');for(const u of sources.slice(0,5)){const li=document.createElement('li'),a=document.createElement('a');a.href=u;a.textContent='Open supporting source';a.target='_blank';a.rel='noopener noreferrer';li.append(a);ul.append(li)}result.append(ul)}
+  result.append(text('p','AI and search results may be inaccurate. A title listing or cast match alone does not verify the scene.','rr-result-caution'));
+ }
+ button.addEventListener('click',async()=>{if(working)return;const f=file.files?.[0];if(!f){show('Choose a screenshot first.');return}working=true;button.disabled=true;button.textContent='Searching scenes…';show('Analyzing the screenshot and researching scene clues. This may take longer than before…');try{const image=await compress(f);const response=await fetch('/api/scenefinder',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image,clues:clues.value.trim()})});const data=await response.json().catch(()=>({}));if(!response.ok)throw Error(data.error||'Service returned '+response.status);render(data);status.textContent='Analysis finished.'}catch(e){show('Could not identify scene: '+(e.message||'Unknown error'))}finally{working=false;button.disabled=false;button.textContent='Identify Scene ✦'}});
+ window.addEventListener('pagehide',reset);
 })();</script><nav class="rr-v2-bottom" aria-label="Mobile navigation"><a href="#home"><span>⌂</span>Home</a><a href="#movies"><span>◈</span>Discover</a><a href="#scenefinder"><span>◎</span>SceneFinder</a><a href="#watchlist"><span>♡</span>Library</a><a href="#profile"><span>♙</span>Profile</a></nav><script>(function(){function sync(){document.querySelectorAll('.rr-v2-bottom a').forEach(a=>a.setAttribute('aria-current',a.hash===location.hash?'page':'false'));}addEventListener('hashchange',sync);sync();})();</script><script id="rr-v2-poster-sync">(function(){
 var wall=document.getElementById('rrV2PosterWall');if(!wall)return;
 var done=false;
