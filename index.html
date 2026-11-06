@@ -1306,7 +1306,27 @@ window.rrMatureApproved=()=>approved;
  document.querySelector('.rr-scene-drop')?.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();file.click();}});
  file.addEventListener('change',()=>{resetPreview();const f=file.files?.[0];if(!f){status.textContent='No screenshot selected.';return;}if(!['image/jpeg','image/png','image/webp'].includes(f.type)||f.size>8*1024*1024){status.textContent='Please choose a JPEG, PNG or WebP image no larger than 8 MB.';file.value='';return;}objectUrl=URL.createObjectURL(f);preview.src=objectUrl;preview.classList.add('rr-visible');status.textContent='Screenshot ready. It has not been uploaded. Tap Identify Scene to analyze it.';});
  document.getElementById('rrSceneClear')?.addEventListener('click',()=>{if(working)return;resetPreview();file.value='';clues.value='';status.textContent='Your screenshot is only uploaded when you press Identify Scene. Do not upload private or sensitive images.';show('Select a screenshot to get AI title suggestions.');});
- const readImage=(f)=>new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>reject(new Error('Unable to read screenshot'));r.readAsDataURL(f);});
+ const readImage=async(f)=>{
+  const image=await createImageBitmap(f).catch(()=>null);
+  if(!image)throw new Error('Unable to decode screenshot. Try a different JPEG or PNG.');
+  try{
+   const maxSide=1280,scale=Math.min(1,maxSide/Math.max(image.width,image.height));
+   const canvas=document.createElement('canvas');
+   canvas.width=Math.max(1,Math.round(image.width*scale));
+   canvas.height=Math.max(1,Math.round(image.height*scale));
+   const ctx=canvas.getContext('2d');
+   if(!ctx)throw new Error('Image processing is unavailable in this browser.');
+   ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);
+   ctx.drawImage(image,0,0,canvas.width,canvas.height);
+   let dataUrl='';
+   for(const quality of [0.78,0.62,0.46,0.32]){
+    dataUrl=canvas.toDataURL('image/jpeg',quality);
+    if(dataUrl.length<=520000)break;
+   }
+   if(dataUrl.length>520000)throw new Error('This screenshot is too detailed to upload safely. Try cropping it first.');
+   return dataUrl;
+  }finally{image.close?.();}
+ };
  button.addEventListener('click',async()=>{
   if(working)return;
   const f=file.files?.[0],q=clues.value.trim();
@@ -1315,9 +1335,10 @@ window.rrMatureApproved=()=>approved;
   working=true;button.disabled=true;button.textContent='Analyzing screenshot…';show('Uploading your screenshot securely for AI analysis. This may take a moment…');
   try{
    const dataUrl=await readImage(f);
-   const response=await fetch('/api/scenefinder',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:dataUrl,imageData:dataUrl,imageBase64:dataUrl.split(',')[1],mimeType:f.type,clues:q})});
+   status.textContent='Screenshot optimized for upload. Identifying scene…';
+   const response=await fetch('/api/scenefinder',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:dataUrl,imageData:dataUrl,imageBase64:dataUrl.split(',')[1],mimeType:'image/jpeg',clues:q})});
    const data=await response.json().catch(()=>({}));
-   if(!response.ok)throw new Error(data.error||data.message||('SceneFinder service returned '+response.status));
+   if(!response.ok)throw new Error(response.status===413?'Screenshot exceeded the server upload limit. Please crop the image and try again.':(data.error||data.message||('SceneFinder service returned '+response.status)));
    result.replaceChildren();
    const description=data.description||data.analysis||data.explanation||data.reason||'';
    const candidates=Array.isArray(data.matches)?data.matches:Array.isArray(data.candidates)?data.candidates:Array.isArray(data.results)?data.results:[];
