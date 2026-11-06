@@ -1,6 +1,7 @@
 
 const MODEL = process.env.SCENEFINDER_MODEL || "gemini-3.5-flash-lite";
 const SEARCH_MODEL = process.env.SCENEFINDER_SEARCH_MODEL || "gemini-3.8-flash";
+
 const FALLBACKS = [...new Set([
   MODEL,
   ...(process.env.SCENEFINDER_FALLBACK_MODELS || SEARCH_MODEL)
@@ -25,7 +26,6 @@ function parseImage(image) {
   const m = image.match(
     /^data:(image\/(?:jpeg|jpg|png|webp));base64,([A-Za-z0-9+/=\s]+)$/
   );
-
   if (!m) return null;
 
   const data = m[2].replace(/\s/g, "");
@@ -38,16 +38,26 @@ function parseImage(image) {
 }
 
 function parseJSON(t) {
+  const raw = String(t || "").trim();
+  const cleaned = raw
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/, "")
+    .trim();
+
   try {
-    return JSON.parse(
-      String(t || "")
-        .replace(/^```(?:json)?\s*/i, "")
-        .replace(/\s*```$/, "")
-        .trim()
-    );
-  } catch {
-    return null;
+    return JSON.parse(cleaned);
+  } catch {}
+
+  const start = cleaned.indexOf("{");
+  if (start < 0) return null;
+
+  for (let i = cleaned.length - 1; i > start; i--) {
+    if (cleaned[i] !== "}") continue;
+    try {
+      return JSON.parse(cleaned.slice(start, i + 1));
+    } catch {}
   }
+  return null;
 }
 
 async function callGemini(model, parts, key, search = false) {
@@ -115,7 +125,6 @@ async function vision(parts, key) {
 
       if (r.ok) {
         const data = parseJSON(r.text);
-
         if (data) {
           return {
             ok: true,
@@ -124,7 +133,6 @@ async function vision(parts, key) {
             fallbackUsed: model !== MODEL
           };
         }
-
         last = { ok: false, status: 502 };
         break;
       }
@@ -149,35 +157,44 @@ async function vision(parts, key) {
 }
 
 const visionPrompt = clues => `
-Identify a movie or TV screenshot using actual frame evidence,
-not social-media captions, usernames, hashtags, or suggested titles.
+You are ReelRadar SceneFinder. Examine the screenshot carefully.
 
-Dialogue subtitles can be searched but are not production titles.
-Do not assume an actor's identity from resemblance.
-Read a clearly printed poster or title-card title when present.
-Describe distinctive scene details.
-Suggest at most three productions and abstain when evidence is weak.
+Distinguish the actual film frame from Instagram, TikTok,
+Prime Video, or other social-media overlays.
 
-Return JSON only:
+Extract any exact on-screen dialogue, promotional caption text,
+account name, hashtags, and any explicit production title visible.
+
+Contextual social-media text is a SEARCH LEAD, not proof.
+
+Do not assume actor identity from resemblance or force a guess.
+If multiple titles appear in a caption, list them as contextual
+leads, not as identified productions.
+
+Never assume the most recent year.
+
+Return ONLY JSON:
 {
   "imageType": "scene",
   "visibleTitle": null,
-  "visualEvidence": "specific visible details",
-  "dialogue": "exact visible dialogue or null",
+  "visualEvidence": "distinctive actual frame details",
+  "dialogue": null,
+  "socialContext": "relevant text from interface, or null",
   "candidates": [
     {
-      "title": "title",
+      "title": "production title",
       "year": null,
       "type": "movie",
-      "reason": "specific evidence"
+      "reason": "specific visual evidence, not caption alone"
     }
   ],
   "confidence": "Low"
 }
 
 imageType: poster, scene, unknown.
+type: movie, tv.
 confidence: High, Medium, Low.
-type: movie or tv.
+If unsure, candidates may be empty.
 
 User clues: ${clues || "None"}
 `;
@@ -191,10 +208,8 @@ function sanitize(raw) {
     .filter(x => x && typeof x.title === "string" && x.title.trim())
     .map(x => ({
       title: x.title.trim().slice(0, 150),
-      year:
-        Number.isInteger(x.year) && x.year >= 1880 && x.year <= 2100
-          ? x.year
-          : null,
+      year: Number.isInteger(x.year) &&
+        x.year >= 1880 && x.year <= 2100 ? x.year : null,
       type: x.type === "tv" ? "tv" : "movie",
       reason: String(x.reason || "").slice(0, 350)
     }))
@@ -208,33 +223,26 @@ function sanitize(raw) {
 
   return {
     imageType: ["poster", "scene", "unknown"].includes(raw?.imageType)
-      ? raw.imageType
-      : "unknown",
-    visibleTitle:
-      typeof raw?.visibleTitle === "string"
-        ? raw.visibleTitle.trim().slice(0, 150)
-        : null,
+      ? raw.imageType : "unknown",
+    visibleTitle: typeof raw?.visibleTitle === "string"
+      ? raw.visibleTitle.trim().slice(0, 150) : null,
     visualEvidence: String(raw?.visualEvidence || "").slice(0, 700),
-    dialogue:
-      typeof raw?.dialogue === "string"
-        ? raw.dialogue.slice(0, 250)
-        : null,
+    dialogue: typeof raw?.dialogue === "string"
+      ? raw.dialogue.slice(0, 250) : null,
+    socialContext: typeof raw?.socialContext === "string"
+      ? raw.socialContext.slice(0, 650) : null,
     confidence: ["High", "Medium", "Low"].includes(raw?.confidence)
-      ? raw.confidence
-      : "Low",
+      ? raw.confidence : "Low",
     candidates
   };
 }
 
 function posterUrl(p) {
   if (typeof p !== "string") return null;
-
   if (p.startsWith("https://")) return p;
-
   if (p.startsWith("/")) {
     return "https://image.tmdb.org/t/p/w500" + p;
   }
-
   return null;
 }
 
@@ -248,7 +256,6 @@ async function amodb(title, type, key, year) {
     const url = new URL(
       `https://api.amodb.dev/3/search/${type}`
     );
-
     url.searchParams.set("query", title);
 
     const r = await fetch(url, {
@@ -271,9 +278,7 @@ async function amodb(title, type, key, year) {
       .map(item => {
         const date = item.release_date || item.first_air_date || "";
         const y = /^\d{4}/.test(date)
-          ? Number(date.slice(0, 4))
-          : null;
-
+          ? Number(date.slice(0, 4)) : null;
         return {
           item,
           y,
@@ -320,35 +325,47 @@ async function matchCandidate(c, key) {
 
 async function discover(rec, clues, key) {
   const prompt = `
-Use Google Search to discover the identity of a movie or TV scene.
+Find possible movie or television productions for this screenshot
+using Google Search.
 
-Start from exact dialogue and distinctive visual details.
-Do NOT start from candidate movie guesses.
+Search the exact dialogue first, then distinctive visual clues.
 
-Screenshot description: ${rec.visualEvidence}
+Also investigate promotional social-media text as a LEAD,
+including account names, captions, and hashtags.
+These can point to the production but DO NOT prove the frame
+comes from that production.
+
+Do not anchor on the initial vision AI's title guesses.
+
+Visual frame: ${rec.visualEvidence}
 Dialogue: ${rec.dialogue || "none"}
-Additional clues: ${clues || "none"}
+Social-media text: ${rec.socialContext || "none"}
+User clues: ${clues || "none"}
 
-Search distinctive dialogue quotations and scene descriptions,
-including productions not initially guessed.
+Return up to 5 candidate productions, including uncertain leads,
+and clearly label why each was suggested.
 
-Social-media captions, account names and hashtags are not proof.
+Never invent citations or claim scene verification.
 
-Return only JSON in plain text:
+Return a JSON object:
 {
   "candidates": [
     {
-      "title": "exact production title",
+      "title": "exact title",
       "year": null,
       "type": "movie",
-      "reason": "what search evidence actually supports"
+      "reason": "specific search lead"
     }
   ],
   "notes": "uncertainties"
 }
 
-Return 0-3 candidates.
-Do not invent search evidence.
+If you cannot produce JSON, write each possible title on a
+separate line as:
+TITLE: title | TYPE: movie or tv | REASON: explanation
+
+Do not return empty candidates solely because scene
+verification is unavailable.
 `;
 
   const r = await callGemini(
@@ -359,6 +376,7 @@ Do not invent search evidence.
   );
 
   if (!r.ok) {
+    console.warn("SceneFinder discovery unavailable", r.status);
     return {
       candidates: [],
       sources: [],
@@ -367,16 +385,39 @@ Do not invent search evidence.
   }
 
   const parsed = parseJSON(r.text);
+  let found = sanitize(parsed || {}).candidates;
 
-  const candidates = sanitize(parsed || {}).candidates;
+  if (!found.length) {
+    found = r.text.split("\n")
+      .map(line => {
+        const m = line.match(
+          /^\s*(?:[-*]\s*)?TITLE\s*:\s*([^|\n]+)(?:\|\s*TYPE\s*:\s*(movie|tv))?(?:\s*\|\s*REASON\s*:\s*(.*))?/i
+        );
+
+        return m ? {
+          title: m[1].trim(),
+          year: null,
+          type: m[2] === "tv" ? "tv" : "movie",
+          reason: (m[3] || "Search lead; unverified").slice(0, 350)
+        } : null;
+      })
+      .filter(Boolean)
+      .slice(0, 5);
+  }
 
   const sources = (r.grounding?.groundingChunks || [])
     .map(x => x?.web?.uri)
     .filter(x => typeof x === "string" && /^https:\/\//.test(x))
     .slice(0, 5);
 
+  console.info("SceneFinder discovery", JSON.stringify({
+    count: found.length,
+    grounded: sources.length > 0,
+    parsed: !!parsed
+  }));
+
   return {
-    candidates,
+    candidates: found,
     sources,
     notes: String(parsed?.notes || "").slice(0, 350)
   };
@@ -386,14 +427,13 @@ async function verify(rec, items, clues, key) {
   if (!items.length) return null;
 
   const prompt = `
-Research whether a specific film or TV screenshot matches
-one of these productions:
+Research whether a specific film or TV screenshot can be
+matched to one of these productions:
 
-${items.map(x =>
-    `${x.title} (${x.year || "year unknown"})`
-  ).join("; ")}
+${items.map(x => `${x.title} (${x.year || "year unknown"})`).join("; ")}
 
 Visual details: ${rec.visualEvidence}
+Social-media search leads (NOT proof): ${rec.socialContext || "none"}
 Exact dialogue: ${rec.dialogue || "none"}
 User clues: ${clues || "none"}
 
@@ -405,13 +445,13 @@ social-media caption, or search query is NOT scene verification.
 Only identify a production if search evidence explicitly connects
 distinctive dialogue or visual scene details to that title.
 
-If evidence is inadequate, say UNKNOWN.
+If evidence is inadequate say UNKNOWN.
 
 Reply exactly:
 TITLE: title or UNKNOWN
 STATUS: SUPPORTED or UNCERTAIN
 EVIDENCE: short specific evidence
-LIMITATIONS: short explanation.
+LIMITATIONS: short explanation
 `;
 
   const r = await callGemini(
@@ -429,10 +469,7 @@ LIMITATIONS: short explanation.
     const m = line.match(
       /^\s*(TITLE|STATUS|EVIDENCE|LIMITATIONS)\s*:\s*(.*)$/i
     );
-
-    if (m) {
-      fields[m[1].toUpperCase()] = m[2].trim();
-    }
+    if (m) fields[m[1].toUpperCase()] = m[2].trim();
   }
 
   const sources = (r.grounding?.groundingChunks || [])
@@ -462,14 +499,10 @@ export default async function handler(req, res) {
     "Content-Type, Authorization"
   );
 
-  if (req.method === "OPTIONS") {
-    return res.status(204).end();
-  }
+  if (req.method === "OPTIONS") return res.status(204).end();
 
   if (req.method !== "POST") {
-    return send(res, 405, {
-      error: "Method not allowed"
-    });
+    return send(res, 405, { error: "Method not allowed" });
   }
 
   const key = process.env.GEMINI_API_KEY;
@@ -494,18 +527,14 @@ export default async function handler(req, res) {
       try {
         body = JSON.parse(body);
       } catch {
-        return send(res, 400, {
-          error: "Invalid JSON"
-        });
+        return send(res, 400, { error: "Invalid JSON" });
       }
     }
 
     const { image, clues = "" } = body || {};
 
     if (typeof clues !== "string" || clues.length > 1000) {
-      return send(res, 400, {
-        error: "Invalid clues"
-      });
+      return send(res, 400, { error: "Invalid clues" });
     }
 
     const imageData = parseImage(image);
@@ -538,13 +567,34 @@ export default async function handler(req, res) {
     }
 
     const rec = sanitize(first.data);
-
     const discovery = await discover(rec, clues, key);
 
-    const all = [
+    let all = [
       ...rec.candidates,
       ...discovery.candidates
     ];
+
+    // Second image-analysis pass when discovery finds no titles.
+    if (!all.length) {
+      const retry = await vision([
+        {
+          text: `Independently analyze this movie or TV screenshot.
+Use visible promotional text as search leads, not proof.
+Suggest up to three plausible titles with uncertainty.
+Return JSON containing a candidates array, with title,
+year, type, and reason.
+Do not force a guess.
+Scene: ${rec.visualEvidence}
+Overlay: ${rec.socialContext || "none"}
+Dialogue: ${rec.dialogue || "none"}`
+        },
+        { inline_data: imageData }
+      ], key);
+
+      if (retry.ok) {
+        all = all.concat(sanitize(retry.data).candidates);
+      }
+    }
 
     if (rec.imageType === "poster" && rec.visibleTitle) {
       all.unshift({
@@ -560,9 +610,7 @@ export default async function handler(req, res) {
     const unique = all
       .filter(x => {
         const n = norm(x.title);
-
         if (!n || seen.has(n)) return false;
-
         seen.add(n);
         return true;
       })
@@ -582,10 +630,9 @@ export default async function handler(req, res) {
         x => norm(x.title) === norm(rec.visibleTitle)
       ) || null;
     } else if (verification?.supported) {
-      selected = results.find(
-        x =>
-          norm(x.title) === norm(verification.title) ||
-          norm(x.match?.title) === norm(verification.title)
+      selected = results.find(x =>
+        norm(x.title) === norm(verification.title) ||
+        norm(x.match?.title) === norm(verification.title)
       ) || null;
     }
 
@@ -633,7 +680,9 @@ export default async function handler(req, res) {
 
       visualEvidence: rec.visualEvidence,
       dialogue: rec.dialogue,
+      socialContext: rec.socialContext,
 
+      discoveryStatus: discovery.status || "ok",
       verificationEvidence: verification?.evidence || null,
       verificationLimitations: verification?.limitations || null,
 
@@ -659,10 +708,7 @@ export default async function handler(req, res) {
         .filter(Boolean)
     });
   } catch (e) {
-    console.error(
-      "SceneFinder unexpected error:",
-      e?.message
-    );
+    console.error("SceneFinder unexpected error:", e?.message);
 
     return send(res, 500, {
       error: "SceneFinder encountered an unexpected error"
