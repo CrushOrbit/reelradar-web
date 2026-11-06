@@ -1,58 +1,68 @@
 
 const MODEL = process.env.SCENEFINDER_MODEL || "gemini-3.5-flash-lite";
 const SEARCH_MODEL = process.env.SCENEFINDER_SEARCH_MODEL || "gemini-3.8-flash";
-const FALLBACKS = (process.env.SCENEFINDER_FALLBACK_MODELS || SEARCH_MODEL)
-  .split(",").map(x => x.trim()).filter(Boolean);
+const FALLBACKS = [...new Set([
+  MODEL,
+  ...(process.env.SCENEFINDER_FALLBACK_MODELS || SEARCH_MODEL)
+    .split(",").map(x => x.trim()).filter(Boolean)
+])].slice(0, 3);
 
 const MAX_IMAGE_LENGTH = 6000000;
-const TIMEOUT = 15000;
 let cooldownUntil = 0;
 
-function send(res, status, data) {
-  return res.status(status).json(data);
-}
+const norm = s => String(s || "")
+  .normalize("NFKD")
+  .toLowerCase()
+  .replace(/[^a-z0-9]+/g, " ")
+  .trim();
 
-function norm(s) {
-  return String(s || "").normalize("NFKD").toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ").trim();
-}
+const send = (res, status, body) => res.status(status).json(body);
 
 function parseImage(image) {
   if (typeof image !== "string") return null;
   if (image.length > MAX_IMAGE_LENGTH) return { tooLarge: true };
+
   const m = image.match(
     /^data:(image\/(?:jpeg|jpg|png|webp));base64,([A-Za-z0-9+/=\s]+)$/
   );
+
   if (!m) return null;
+
   const data = m[2].replace(/\s/g, "");
   if (!data || data.length % 4) return null;
+
   return {
     mime_type: m[1] === "image/jpg" ? "image/jpeg" : m[1],
     data
   };
 }
 
-function json(text) {
+function parseJSON(t) {
   try {
-    return JSON.parse(String(text || "")
-      .replace(/^```(?:json)?\s*/i, "")
-      .replace(/\s*```$/, "").trim());
+    return JSON.parse(
+      String(t || "")
+        .replace(/^```(?:json)?\s*/i, "")
+        .replace(/\s*```$/, "")
+        .trim()
+    );
   } catch {
     return null;
   }
 }
 
-async function gemini(model, parts, key, search = false) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT);
+async function callGemini(model, parts, key, search = false) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 18000);
+
   try {
     const body = {
       contents: [{ role: "user", parts }],
       generationConfig: {
         temperature: 0.1,
-        maxOutputTokens: 1600
+        maxOutputTokens: 1800
       }
     };
+
     if (search) {
       body.tools = [{ google_search: {} }];
     } else {
@@ -68,102 +78,123 @@ async function gemini(model, parts, key, search = false) {
           "x-goog-api-key": key
         },
         body: JSON.stringify(body),
-        signal: controller.signal
+        signal: ctrl.signal
       }
     );
+
     const data = await r.json().catch(() => ({}));
+
     if (!r.ok) {
-      console.warn("SceneFinder Gemini:", model, r.status);
+      console.warn("SceneFinder Gemini", model, r.status);
       return { ok: false, status: r.status };
     }
-    const candidate = data.candidates?.[0];
+
+    const c = data.candidates?.[0];
+
     return {
       ok: true,
-      text: (candidate?.content?.parts || [])
-        .map(p => p.text || "").join("\n").trim(),
-      grounding: candidate?.groundingMetadata || null
+      text: (c?.content?.parts || [])
+        .map(p => p.text || "")
+        .join("\n"),
+      grounding: c?.groundingMetadata || null
     };
   } catch (e) {
-    console.warn("SceneFinder Gemini:", e?.message);
+    console.warn("SceneFinder Gemini", e?.message);
     return { ok: false, status: 503 };
   } finally {
     clearTimeout(timer);
   }
 }
 
-async function recognize(parts, key) {
+async function vision(parts, key) {
   let last = { ok: false, status: 503 };
-  for (const model of [...new Set([MODEL, ...FALLBACKS])].slice(0, 3)) {
+
+  for (const model of FALLBACKS) {
     for (let attempt = 0; attempt < 2; attempt++) {
-      const r = await gemini(model, parts, key);
+      const r = await callGemini(model, parts, key);
+
       if (r.ok) {
-        const data = json(r.text);
-        if (data) return {
-          ok: true, data, model, fallbackUsed: model !== MODEL
-        };
+        const data = parseJSON(r.text);
+
+        if (data) {
+          return {
+            ok: true,
+            data,
+            model,
+            fallbackUsed: model !== MODEL
+          };
+        }
+
+        last = { ok: false, status: 502 };
         break;
       }
+
       last = r;
-      if ([400, 401, 403, 404, 429, 503].includes(r.status)) break;
-      if (attempt === 0)
-        await new Promise(resolve => setTimeout(resolve, 700));
+
+      if ([400, 401, 403, 404, 429, 503].includes(r.status)) {
+        break;
+      }
+
+      if (attempt === 0) {
+        await new Promise(resolve => setTimeout(resolve, 600));
+      }
     }
-    if ([400, 401, 403, 429].includes(last.status)) break;
+
+    if ([400, 401, 403, 429].includes(last.status)) {
+      break;
+    }
   }
+
   return last;
 }
 
-function prompt(clues) {
-  return `You are ReelRadar SceneFinder, an expert at identifying
-movies and TV shows from screenshots.
+const visionPrompt = clues => `
+Identify a movie or TV screenshot using actual frame evidence,
+not social-media captions, usernames, hashtags, or suggested titles.
 
-Analyze the actual film or television frame.
+Dialogue subtitles can be searched but are not production titles.
+Do not assume an actor's identity from resemblance.
+Read a clearly printed poster or title-card title when present.
+Describe distinctive scene details.
+Suggest at most three productions and abstain when evidence is weak.
 
-IMPORTANT:
-- Ignore Instagram captions, hashtags, usernames and account names
-  when deciding what production the scene belongs to.
-- A social-media caption may mention an unrelated movie.
-- Dialogue subtitles are clues, not movie titles.
-- If this is a real movie poster, prioritize its printed title.
-- Never invent actors, years, titles, plots or scenes.
-- Generic costumes and locations are not enough for a confident match.
-- Suggest up to three plausible productions.
-- If uncertain, return no candidates rather than forcing a match.
-
-Return ONLY JSON:
+Return JSON only:
 {
- "imageType":"scene",
- "visibleTitle":null,
- "candidates":[
-  {
-   "title":"Exact movie or TV title",
-   "year":null,
-   "type":"movie",
-   "reason":"Specific evidence visible in the scene"
-  }
- ],
- "confidence":"Low",
- "visualEvidence":"Detailed description of the actual scene",
- "dialogue":"Visible dialogue, or null"
+  "imageType": "scene",
+  "visibleTitle": null,
+  "visualEvidence": "specific visible details",
+  "dialogue": "exact visible dialogue or null",
+  "candidates": [
+    {
+      "title": "title",
+      "year": null,
+      "type": "movie",
+      "reason": "specific evidence"
+    }
+  ],
+  "confidence": "Low"
 }
 
-imageType: poster, scene or unknown.
-confidence: High, Medium or Low.
+imageType: poster, scene, unknown.
+confidence: High, Medium, Low.
 type: movie or tv.
-visibleTitle: only a production title clearly printed on a
-poster or title card; otherwise null.
 
-User clues: ${clues || "None"}`;
-}
+User clues: ${clues || "None"}
+`;
 
-function candidates(data) {
+function sanitize(raw) {
   const seen = new Set();
-  return (Array.isArray(data?.candidates) ? data.candidates : [])
+
+  const candidates = (
+    Array.isArray(raw?.candidates) ? raw.candidates : []
+  )
     .filter(x => x && typeof x.title === "string" && x.title.trim())
     .map(x => ({
       title: x.title.trim().slice(0, 150),
-      year: Number.isInteger(x.year) && x.year >= 1880 &&
-        x.year <= 2100 ? x.year : null,
+      year:
+        Number.isInteger(x.year) && x.year >= 1880 && x.year <= 2100
+          ? x.year
+          : null,
       type: x.type === "tv" ? "tv" : "movie",
       reason: String(x.reason || "").slice(0, 350)
     }))
@@ -172,50 +203,90 @@ function candidates(data) {
       if (seen.has(k)) return false;
       seen.add(k);
       return true;
-    }).slice(0, 3);
+    })
+    .slice(0, 3);
+
+  return {
+    imageType: ["poster", "scene", "unknown"].includes(raw?.imageType)
+      ? raw.imageType
+      : "unknown",
+    visibleTitle:
+      typeof raw?.visibleTitle === "string"
+        ? raw.visibleTitle.trim().slice(0, 150)
+        : null,
+    visualEvidence: String(raw?.visualEvidence || "").slice(0, 700),
+    dialogue:
+      typeof raw?.dialogue === "string"
+        ? raw.dialogue.slice(0, 250)
+        : null,
+    confidence: ["High", "Medium", "Low"].includes(raw?.confidence)
+      ? raw.confidence
+      : "Low",
+    candidates
+  };
 }
 
-function posterUrl(path) {
-  if (typeof path !== "string") return null;
-  if (path.startsWith("https://")) return path;
-  if (path.startsWith("/"))
-    return "https://image.tmdb.org/t/p/w500" + path;
+function posterUrl(p) {
+  if (typeof p !== "string") return null;
+
+  if (p.startsWith("https://")) return p;
+
+  if (p.startsWith("/")) {
+    return "https://image.tmdb.org/t/p/w500" + p;
+  }
+
   return null;
 }
 
 async function amodb(title, type, key, year) {
   if (!key || !title) return null;
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 6000);
+
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 6500);
+
   try {
-    const url = new URL(`https://api.amodb.dev/3/search/${type}`);
+    const url = new URL(
+      `https://api.amodb.dev/3/search/${type}`
+    );
+
     url.searchParams.set("query", title);
+
     const r = await fetch(url, {
       headers: {
         Authorization: `Bearer ${key}`,
         Accept: "application/json"
       },
-      signal: controller.signal
+      signal: ctrl.signal
     });
-    if (!r.ok) return null;
-    const data = await r.json();
-    const matches = (data.results || []).filter(item =>
-      [item.title, item.name, item.original_title, item.original_name]
-        .some(name => norm(name) === norm(title))
-    );
-    const ranked = matches.map(item => {
-      const date = item.release_date || item.first_air_date || "";
-      const y = /^\d{4}/.test(date) ? Number(date.slice(0, 4)) : null;
-      const diff = year && y ? Math.abs(year - y) : null;
-      return { item, y, diff };
-    }).filter(x => x.diff === null || x.diff <= 1)
-      .sort((a, b) =>
-        (a.diff === 0 ? -1 : a.diff ?? 2) -
-        (b.diff === 0 ? -1 : b.diff ?? 2)
-      );
 
-    if (!ranked.length) return null;
-    const { item, y } = ranked[0];
+    if (!r.ok) return null;
+
+    const data = await r.json();
+
+    const rows = (data.results || [])
+      .filter(x =>
+        [x.title, x.name, x.original_title, x.original_name]
+          .some(n => norm(n) === norm(title))
+      )
+      .map(item => {
+        const date = item.release_date || item.first_air_date || "";
+        const y = /^\d{4}/.test(date)
+          ? Number(date.slice(0, 4))
+          : null;
+
+        return {
+          item,
+          y,
+          diff: year && y ? Math.abs(year - y) : null
+        };
+      })
+      .filter(x => x.diff === null || x.diff <= 1)
+      .sort((a, b) => (a.diff ?? 2) - (b.diff ?? 2));
+
+    if (!rows.length) return null;
+
+    const { item, y } = rows[0];
+
     return {
       id: item.id,
       title: item.title || item.name || title,
@@ -232,305 +303,369 @@ async function amodb(title, type, key, year) {
   }
 }
 
-async function findMatches(items, key) {
-  return Promise.all(items.map(async candidate => {
-    let match = await amodb(
-      candidate.title, candidate.type, key, candidate.year
+async function matchCandidate(c, key) {
+  let match = await amodb(c.title, c.type, key, c.year);
+
+  if (!match) {
+    match = await amodb(
+      c.title,
+      c.type === "tv" ? "movie" : "tv",
+      key,
+      c.year
     );
-    if (!match) {
-      match = await amodb(
-        candidate.title,
-        candidate.type === "movie" ? "tv" : "movie",
-        key,
-        candidate.year
-      );
-    }
-    return { candidate, match };
-  }));
+  }
+
+  return { ...c, match };
 }
 
-async function verifyWithSearch(rec, clues, key) {
-  const titles = rec.candidates
-    .map(x => `${x.title} (${x.year || "year unknown"})`)
-    .join("; ");
+async function discover(rec, clues, key) {
+  const prompt = `
+Use Google Search to discover the identity of a movie or TV scene.
 
-  const p = `You are verifying a film or television scene identification.
+Start from exact dialogue and distinctive visual details.
+Do NOT start from candidate movie guesses.
 
-Possible productions:
-${titles || "None"}
+Screenshot description: ${rec.visualEvidence}
+Dialogue: ${rec.dialogue || "none"}
+Additional clues: ${clues || "none"}
 
-Actual screenshot description:
-${rec.visualEvidence}
+Search distinctive dialogue quotations and scene descriptions,
+including productions not initially guessed.
 
-Visible dialogue:
-${rec.dialogue || "None"}
+Social-media captions, account names and hashtags are not proof.
 
-Visible poster title:
-${rec.visibleTitle || "None"}
+Return only JSON in plain text:
+{
+  "candidates": [
+    {
+      "title": "exact production title",
+      "year": null,
+      "type": "movie",
+      "reason": "what search evidence actually supports"
+    }
+  ],
+  "notes": "uncertainties"
+}
 
-Additional user clues:
-${clues || "None"}
+Return 0-3 candidates.
+Do not invent search evidence.
+`;
 
-Use Google Search to investigate the specific scene.
+  const r = await callGemini(
+    SEARCH_MODEL,
+    [{ text: prompt }],
+    key,
+    true
+  );
 
-Search for combinations of distinctive visual clues,
-dialogue, scene descriptions, characters, costumes and
-candidate production titles.
+  if (!r.ok) {
+    return {
+      candidates: [],
+      sources: [],
+      status: r.status
+    };
+  }
 
-CRITICAL VERIFICATION RULES:
-- Do not trust the first AI's candidate list.
-- A movie existing in a database does NOT prove a scene match.
-- Instagram captions and hashtags are NOT scene verification.
-- A cast member appearing in a film does NOT prove that
-  this particular screenshot comes from that film.
-- Do not fabricate scene descriptions or citations.
-- A source must connect distinctive scene evidence to the
-  proposed production.
-- If the sources only establish the cast, genre, or plot,
-  the specific screenshot remains unverified.
-- Do not confuse promotional clips with their caption text.
-- Prefer saying unknown to producing a false identification.
+  const parsed = parseJSON(r.text);
 
-Return the following lines:
-TITLE: exact verified production title, or UNKNOWN
-YEAR: year, or UNKNOWN
-STATUS: VERIFIED or UNCERTAIN
-EVIDENCE: concise explanation
-LIMITATIONS: what is not established
-
-Use VERIFIED only when credible search evidence specifically
-supports the production identity for the scene.`;
-
-  const r = await gemini(SEARCH_MODEL, [{ text: p }], key, true);
-  if (!r.ok) return null;
+  const candidates = sanitize(parsed || {}).candidates;
 
   const sources = (r.grounding?.groundingChunks || [])
     .map(x => x?.web?.uri)
-    .filter(x => typeof x === "string" && /^https?:\/\//.test(x))
+    .filter(x => typeof x === "string" && /^https:\/\//.test(x))
     .slice(0, 5);
 
-  const lines = {};
-  for (const line of r.text.split("\n")) {
-    const m = line.match(/^\s*(TITLE|YEAR|STATUS|EVIDENCE|LIMITATIONS)\s*:\s*(.*)$/i);
-    if (m) lines[m[1].toUpperCase()] = m[2].trim();
-  }
-
-  const title = lines.TITLE || null;
-  const verified = lines.STATUS?.toUpperCase() === "VERIFIED" &&
-    Boolean(title) && norm(title) !== "unknown" &&
-    sources.length > 0;
-
   return {
-    title,
-    verified,
-    evidence: lines.EVIDENCE || "",
-    limitations: lines.LIMITATIONS || "",
-    text: r.text.slice(0, 1800),
+    candidates,
     sources,
-    grounded: sources.length > 0
+    notes: String(parsed?.notes || "").slice(0, 350)
   };
 }
 
-function choose(rec, results, research) {
-  if (rec.imageType === "poster" && rec.visibleTitle) {
-    return results.find(x =>
-      norm(x.candidate.title) === norm(rec.visibleTitle)
-    ) || null;
+async function verify(rec, items, clues, key) {
+  if (!items.length) return null;
+
+  const prompt = `
+Research whether a specific film or TV screenshot matches
+one of these productions:
+
+${items.map(x =>
+    `${x.title} (${x.year || "year unknown"})`
+  ).join("; ")}
+
+Visual details: ${rec.visualEvidence}
+Exact dialogue: ${rec.dialogue || "none"}
+User clues: ${clues || "none"}
+
+Use Google Search.
+
+A title listing, actor resemblance, cast credit, generic plot,
+social-media caption, or search query is NOT scene verification.
+
+Only identify a production if search evidence explicitly connects
+distinctive dialogue or visual scene details to that title.
+
+If evidence is inadequate, say UNKNOWN.
+
+Reply exactly:
+TITLE: title or UNKNOWN
+STATUS: SUPPORTED or UNCERTAIN
+EVIDENCE: short specific evidence
+LIMITATIONS: short explanation.
+`;
+
+  const r = await callGemini(
+    SEARCH_MODEL,
+    [{ text: prompt }],
+    key,
+    true
+  );
+
+  if (!r.ok) return null;
+
+  const fields = {};
+
+  for (const line of r.text.split("\n")) {
+    const m = line.match(
+      /^\s*(TITLE|STATUS|EVIDENCE|LIMITATIONS)\s*:\s*(.*)$/i
+    );
+
+    if (m) {
+      fields[m[1].toUpperCase()] = m[2].trim();
+    }
   }
-  if (!research?.verified || !research.title) return null;
-  return results.find(x =>
-    norm(x.candidate.title) === norm(research.title) ||
-    norm(x.match?.title) === norm(research.title)
-  ) || null;
-}
 
-function answerText(rec, selected, results, research) {
-  const lines = [];
-  if (selected) {
-    lines.push("Title: " +
-      (selected.match?.title || selected.candidate.title));
-    lines.push("Year: " +
-      (selected.match?.year || selected.candidate.year || "Unknown"));
-    lines.push("Confidence: " +
-      (research?.verified ? "High (search-supported)" :
-        rec.confidence + " (AI estimate)"));
-    lines.push(research?.verified
-      ? "Scene verification: Search-supported; not independently audited."
-      : "Scene verification: Not independently confirmed.");
-  } else {
-    lines.push("No reliable title identified from this screenshot.");
-    lines.push("Confidence: Low (unverified)");
-    lines.push("Scene verification: Not confirmed.");
-  }
+  const sources = (r.grounding?.groundingChunks || [])
+    .map(x => x?.web?.uri)
+    .filter(x => typeof x === "string" && /^https:\/\//.test(x))
+    .slice(0, 5);
 
-  if (rec.visualEvidence)
-    lines.push("Visual evidence: " + rec.visualEvidence);
-  if (rec.dialogue)
-    lines.push("Visible dialogue: " + rec.dialogue);
-  if (research?.evidence)
-    lines.push("Search evidence: " + research.evidence);
-  if (research?.limitations)
-    lines.push("Limitations: " + research.limitations);
-
-  const alternatives = results.filter(x => x !== selected);
-  if (alternatives.length)
-    lines.push("Possible titles (not verified): " +
-      alternatives.map(x => x.candidate.title).join("; "));
-
-  if (!selected)
-    lines.push("Try another frame or add distinctive dialogue.");
-
-  return lines.join("\n\n");
+  return {
+    title: fields.TITLE || null,
+    supported:
+      fields.STATUS?.toUpperCase() === "SUPPORTED" &&
+      sources.length > 0 &&
+      !!fields.TITLE &&
+      norm(fields.TITLE) !== "unknown",
+    evidence: fields.EVIDENCE || "",
+    limitations: fields.LIMITATIONS || "",
+    sources
+  };
 }
 
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization"
+  );
 
-  if (req.method === "OPTIONS") return res.status(204).end();
-  if (req.method !== "POST")
-    return send(res, 405, { error: "Method not allowed" });
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
 
-  const geminiKey = process.env.GEMINI_API_KEY;
+  if (req.method !== "POST") {
+    return send(res, 405, {
+      error: "Method not allowed"
+    });
+  }
+
+  const key = process.env.GEMINI_API_KEY;
   const amodbKey = process.env.AMODB_API_KEY;
 
-  if (!geminiKey)
+  if (!key) {
     return send(res, 503, {
-      error: "SceneFinder is not configured."
+      error: "SceneFinder is not configured"
     });
+  }
 
   if (Date.now() < cooldownUntil) {
-    res.setHeader("Retry-After",
-      String(Math.ceil((cooldownUntil - Date.now()) / 1000)));
     return send(res, 429, {
-      error: "SceneFinder is temporarily rate-limited."
+      error: "SceneFinder is temporarily rate-limited"
     });
   }
 
   try {
     let body = req.body;
+
     if (typeof body === "string") {
       try {
         body = JSON.parse(body);
       } catch {
-        return send(res, 400, { error: "Invalid request body" });
+        return send(res, 400, {
+          error: "Invalid JSON"
+        });
       }
     }
 
     const { image, clues = "" } = body || {};
 
-    if (typeof clues !== "string" || clues.length > 1000)
-      return send(res, 400, { error: "Invalid scene clues" });
+    if (typeof clues !== "string" || clues.length > 1000) {
+      return send(res, 400, {
+        error: "Invalid clues"
+      });
+    }
 
     const imageData = parseImage(image);
 
-    if (imageData?.tooLarge)
+    if (imageData?.tooLarge) {
       return send(res, 413, {
-        error: "Screenshot is too large. Please use a smaller image."
-      });
-
-    if (!imageData)
-      return send(res, 400, {
-        error: "Please upload a valid JPG, PNG, or WebP screenshot."
-      });
-
-    const first = await recognize([
-      { text: prompt(clues) },
-      { inline_data: imageData }
-    ], geminiKey);
-
-    if (!first.ok) {
-      if (first.status === 429)
-        cooldownUntil = Date.now() + 60000;
-
-      return send(res, first.status === 429 ? 429 : 503, {
-        error: first.status === 429
-          ? "SceneFinder has reached a temporary AI usage limit."
-          : "SceneFinder AI is temporarily unavailable. Try again shortly."
+        error: "Screenshot is too large"
       });
     }
 
-    const raw = first.data;
-    const rec = {
-      imageType: ["poster", "scene", "unknown"].includes(raw.imageType)
-        ? raw.imageType : "unknown",
-      visibleTitle: typeof raw.visibleTitle === "string"
-        ? raw.visibleTitle.trim().slice(0, 150) : null,
-      candidates: candidates(raw),
-      confidence: ["High", "Medium", "Low"].includes(raw.confidence)
-        ? raw.confidence : "Low",
-      visualEvidence: String(raw.visualEvidence || "").slice(0, 500),
-      dialogue: typeof raw.dialogue === "string"
-        ? raw.dialogue.slice(0, 300) : null
-    };
+    if (!imageData) {
+      return send(res, 400, {
+        error: "Please upload a valid JPG, PNG or WebP screenshot"
+      });
+    }
 
-    if (rec.imageType === "poster" && rec.visibleTitle &&
-        !rec.candidates.some(x =>
-          norm(x.title) === norm(rec.visibleTitle))) {
-      rec.candidates.unshift({
+    const first = await vision([
+      { text: visionPrompt(clues) },
+      { inline_data: imageData }
+    ], key);
+
+    if (!first.ok) {
+      if (first.status === 429) {
+        cooldownUntil = Date.now() + 60000;
+      }
+
+      return send(res, first.status === 429 ? 429 : 503, {
+        error: "SceneFinder AI is temporarily unavailable. Please retry shortly."
+      });
+    }
+
+    const rec = sanitize(first.data);
+
+    const discovery = await discover(rec, clues, key);
+
+    const all = [
+      ...rec.candidates,
+      ...discovery.candidates
+    ];
+
+    if (rec.imageType === "poster" && rec.visibleTitle) {
+      all.unshift({
         title: rec.visibleTitle,
         year: null,
         type: "movie",
-        reason: "Production title visible on the poster."
+        reason: "Title printed on the poster"
       });
     }
 
-    rec.candidates = rec.candidates.slice(0, 3);
+    const seen = new Set();
 
-    const [results, research] = await Promise.all([
-      findMatches(rec.candidates, amodbKey),
-      verifyWithSearch(rec, clues, geminiKey)
+    const unique = all
+      .filter(x => {
+        const n = norm(x.title);
+
+        if (!n || seen.has(n)) return false;
+
+        seen.add(n);
+        return true;
+      })
+      .slice(0, 6);
+
+    const [results, verification] = await Promise.all([
+      Promise.all(
+        unique.map(c => matchCandidate(c, amodbKey))
+      ),
+      verify(rec, unique, clues, key)
     ]);
 
-    const selected = choose(rec, results, research);
+    let selected = null;
+
+    if (rec.imageType === "poster" && rec.visibleTitle) {
+      selected = results.find(
+        x => norm(x.title) === norm(rec.visibleTitle)
+      ) || null;
+    } else if (verification?.supported) {
+      selected = results.find(
+        x =>
+          norm(x.title) === norm(verification.title) ||
+          norm(x.match?.title) === norm(verification.title)
+      ) || null;
+    }
+
     const primary = selected?.match || null;
 
+    const sources = [...new Set([
+      ...(discovery.sources || []),
+      ...(verification?.sources || [])
+    ])].slice(0, 5);
+
     const possibleMatches = results.map(x => ({
-      title: x.match?.title || x.candidate.title,
-      year: x.match?.year || x.candidate.year || null,
-      type: x.match?.type || x.candidate.type,
-      reason: x.candidate.reason,
+      title: x.match?.title || x.title,
+      year: x.match?.year || x.year || null,
+      type: x.match?.type || x.type,
+      reason: x.reason,
+      overview: x.match?.overview || null,
       posterUrl: x.match?.posterUrl || null,
-      verified: false
+      verified: Boolean(selected && x === selected)
     }));
 
-    const metadataMatches = results
-      .map(x => x.match).filter(Boolean);
+    const uncertain = !selected;
 
-    const answer = answerText(rec, selected, results, research);
+    const answer = uncertain
+      ? "No reliable title identified from this screenshot. Review possible matches or try another frame."
+      : `Possible identification: ${primary?.title || selected.title}. Search support is not independent proof.`;
 
     return send(res, 200, {
       success: true,
       answer,
+
       title: selected
-        ? (primary?.title || selected.candidate.title) : null,
+        ? (primary?.title || selected.title)
+        : null,
+
       year: selected
-        ? (primary?.year || selected.candidate.year || null) : null,
+        ? (primary?.year || selected.year || null)
+        : null,
+
       type: selected
-        ? (primary?.type || selected.candidate.type) : null,
-      confidence: selected
-        ? (research?.verified ? "High" : rec.confidence) : "Low",
-      identificationUncertain: !selected,
+        ? (primary?.type || selected.type)
+        : null,
+
+      confidence: uncertain ? "Low" : rec.confidence,
+      identificationUncertain: uncertain,
+
+      visualEvidence: rec.visualEvidence,
+      dialogue: rec.dialogue,
+
+      verificationEvidence: verification?.evidence || null,
+      verificationLimitations: verification?.limitations || null,
+
       possibleMatches,
+
       posterUrl: primary?.posterUrl || null,
       poster: primary?.posterUrl || null,
       poster_path: primary?.poster_path || null,
+
       overview: primary?.overview || null,
       movieId: primary?.id || null,
+
       verified: false,
       model: first.model,
       fallbackUsed: first.fallbackUsed,
-      searchGrounded: Boolean(research?.grounded),
-      sources: research?.sources || [],
+
+      searchGrounded: sources.length > 0,
+      sources,
+
       metadataProvider: amodbKey ? "AMODB" : null,
-      metadataMatches
+      metadataMatches: results
+        .map(x => x.match)
+        .filter(Boolean)
     });
-  } catch (error) {
-    console.error("SceneFinder error:", error?.message);
+  } catch (e) {
+    console.error(
+      "SceneFinder unexpected error:",
+      e?.message
+    );
+
     return send(res, 500, {
-      error: "SceneFinder encountered an unexpected error."
+      error: "SceneFinder encountered an unexpected error"
     });
   }
 }
