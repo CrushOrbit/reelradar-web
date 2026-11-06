@@ -83,14 +83,8 @@ async function googleLens(imageData, key) {
 
         for (const width of [900, 700, 520, 380]) {
           const candidate = await sharp(bytes)
-            .resize({
-              width,
-              withoutEnlargement: true
-            })
-            .jpeg({
-              quality: 65,
-              mozjpeg: true
-            })
+            .resize({ width, withoutEnlargement: true })
+            .jpeg({ quality: 65, mozjpeg: true })
             .toBuffer();
 
           if (candidate.length <= LENS_MAX_BYTES) {
@@ -104,16 +98,12 @@ async function googleLens(imageData, key) {
         bytes = reduced;
         mime = "image/jpeg";
       } catch (e) {
-        console.warn(
-          "SceneFinder Lens compression unavailable",
-          e.message
-        );
+        console.warn("Lens compression unavailable", e.message);
         return null;
       }
     }
 
     const form = new FormData();
-
     form.append("api_key", key);
     form.append(
       "image",
@@ -139,10 +129,7 @@ async function googleLens(imageData, key) {
       uploaded = await r.json().catch(() => ({}));
 
       if (!r.ok || uploaded.error || !uploaded.image_id) {
-        console.warn(
-          "SceneFinder Lens upload failed",
-          r.status
-        );
+        console.warn("Lens upload failed", r.status);
         return null;
       }
     } finally {
@@ -161,10 +148,7 @@ async function googleLens(imageData, key) {
     const timer = setTimeout(() => ctrl.abort(), 16000);
 
     try {
-      const r = await fetch(url, {
-        signal: ctrl.signal
-      });
-
+      const r = await fetch(url, { signal: ctrl.signal });
       const data = await r.json().catch(() => ({}));
 
       if (!r.ok || data.error) {
@@ -174,26 +158,35 @@ async function googleLens(imageData, key) {
           r.status === 429 ||
           /limit|quota|exhaust|credits/i.test(message)
         ) {
-          lensPauseUntil = Date.now() + 60 * 60 * 1000;
+          lensPauseUntil = Date.now() + 3600000;
         }
 
         console.warn(
-          "SceneFinder Lens search failed",
+          "Lens search failed",
           r.status,
           message.slice(0, 120)
         );
-
         return null;
       }
 
       const rows = [
         ...(Array.isArray(data.exact_matches)
-          ? data.exact_matches : []),
+          ? data.exact_matches.map(x => ({
+              ...x,
+              matchKind: "exact"
+            }))
+          : []),
+
         ...(Array.isArray(data.visual_matches)
-          ? data.visual_matches : [])
+          ? data.visual_matches.map(x => ({
+              ...x,
+              matchKind: "visual"
+            }))
+          : [])
       ]
         .slice(0, 12)
         .map(x => ({
+          matchKind: x.matchKind,
           title: String(x.title || "").slice(0, 180),
           source: String(x.source || "").slice(0, 100),
           link:
@@ -214,16 +207,13 @@ async function googleLens(imageData, key) {
       clearTimeout(timer);
     }
   } catch (e) {
-    console.warn(
-      "SceneFinder Lens unavailable",
-      e.message
-    );
+    console.warn("Lens unavailable", e.message);
     return null;
   }
 }
 
 // -------------------------------------------------
-// GEMINI AI
+// GEMINI
 // -------------------------------------------------
 
 async function callGemini(model, parts, key, search = false) {
@@ -232,10 +222,7 @@ async function callGemini(model, parts, key, search = false) {
 
   try {
     const body = {
-      contents: [{
-        role: "user",
-        parts
-      }],
+      contents: [{ role: "user", parts }],
       generationConfig: {
         temperature: 0.1,
         maxOutputTokens: 1800
@@ -264,11 +251,8 @@ async function callGemini(model, parts, key, search = false) {
     const data = await r.json().catch(() => ({}));
 
     if (!r.ok) {
-      console.warn("SceneFinder Gemini", model, r.status);
-      return {
-        ok: false,
-        status: r.status
-      };
+      console.warn("Gemini", model, r.status);
+      return { ok: false, status: r.status };
     }
 
     const c = data.candidates?.[0];
@@ -281,21 +265,15 @@ async function callGemini(model, parts, key, search = false) {
       grounding: c?.groundingMetadata || null
     };
   } catch (e) {
-    console.warn("SceneFinder Gemini", e?.message);
-    return {
-      ok: false,
-      status: 503
-    };
+    console.warn("Gemini unavailable", e?.message);
+    return { ok: false, status: 503 };
   } finally {
     clearTimeout(timer);
   }
 }
 
 async function vision(parts, key) {
-  let last = {
-    ok: false,
-    status: 503
-  };
+  let last = { ok: false, status: 503 };
 
   for (const model of FALLBACKS) {
     for (let attempt = 0; attempt < 2; attempt++) {
@@ -313,11 +291,7 @@ async function vision(parts, key) {
           };
         }
 
-        last = {
-          ok: false,
-          status: 502
-        };
-
+        last = { ok: false, status: 502 };
         break;
       }
 
@@ -344,27 +318,23 @@ const visionPrompt = clues => `
 You are ReelRadar SceneFinder.
 
 Examine the screenshot carefully.
+Separate the actual film frame from social-media overlays.
 
-Distinguish the actual film frame from Instagram,
-TikTok, Prime Video, and other social-media overlays.
+Extract exact dialogue, visible production titles,
+captions, account names, and hashtags.
 
-Extract exact on-screen dialogue, promotional captions,
-account names, hashtags, and any explicit production title.
-
-Social-media text is a SEARCH LEAD, not proof.
-
+Social-media text is a search lead, not scene proof.
 Do not assume actor identity from resemblance.
-Do not force a guess.
-Never assume the most recent year.
+Never force a guess or assume the newest year.
 
 Return ONLY JSON:
 
 {
   "imageType": "scene",
   "visibleTitle": null,
-  "visualEvidence": "distinctive actual frame details",
+  "visualEvidence": "distinctive frame details",
   "dialogue": null,
-  "socialContext": "relevant interface text or null",
+  "socialContext": null,
   "candidates": [
     {
       "title": "production title",
@@ -379,8 +349,7 @@ Return ONLY JSON:
 imageType: poster, scene, unknown.
 type: movie, tv.
 confidence: High, Medium, Low.
-
-If unsure, candidates may be empty.
+Candidates may be empty.
 
 User clues: ${clues || "None"}
 `;
@@ -389,8 +358,7 @@ function sanitize(raw) {
   const seen = new Set();
 
   const candidates = (
-    Array.isArray(raw?.candidates)
-      ? raw.candidates : []
+    Array.isArray(raw?.candidates) ? raw.candidates : []
   )
     .filter(x =>
       x &&
@@ -409,9 +377,7 @@ function sanitize(raw) {
     }))
     .filter(x => {
       const k = norm(x.title);
-
       if (seen.has(k)) return false;
-
       seen.add(k);
       return true;
     })
@@ -421,64 +387,52 @@ function sanitize(raw) {
     imageType:
       ["poster", "scene", "unknown"].includes(raw?.imageType)
         ? raw.imageType : "unknown",
-
     visibleTitle:
       typeof raw?.visibleTitle === "string"
         ? raw.visibleTitle.trim().slice(0, 150)
         : null,
-
     visualEvidence:
       String(raw?.visualEvidence || "").slice(0, 700),
-
     dialogue:
       typeof raw?.dialogue === "string"
         ? raw.dialogue.slice(0, 250)
         : null,
-
     socialContext:
       typeof raw?.socialContext === "string"
         ? raw.socialContext.slice(0, 650)
         : null,
-
     confidence:
       ["High", "Medium", "Low"].includes(raw?.confidence)
         ? raw.confidence : "Low",
-
     candidates
   };
 }
 
 // -------------------------------------------------
-// GOOGLE LENS CANDIDATE ANALYSIS
+// LENS CANDIDATES AND EVIDENCE
 // -------------------------------------------------
 
 async function lensCandidates(lens, rec, key) {
   if (!lens?.matches?.length || !key) return [];
 
   const prompt = `
-Identify movie or television production titles from
-these actual Google Lens visual-search results.
+Identify movie or TV production titles from these
+Google Lens visual-search results.
 
-Do not confuse an actor's filmography, page title,
-or caption mention with a confirmed scene match.
+Do not confuse an actor's filmography, a page title,
+or a caption mention with a confirmed scene match.
 
-Screenshot visual details:
-${rec.visualEvidence}
-
-Dialogue:
-${rec.dialogue || "none"}
+Screenshot details: ${rec.visualEvidence}
+Dialogue: ${rec.dialogue || "none"}
 
 Lens results:
-${JSON.stringify(
-    lens.matches.map(x => ({
-      title: x.title,
-      source: x.source,
-      link: x.link
-    }))
-  )}
+${JSON.stringify(lens.matches.map(x => ({
+    title: x.title,
+    source: x.source,
+    link: x.link
+  })))}
 
 Return ONLY JSON:
-
 {
   "candidates": [
     {
@@ -490,7 +444,7 @@ Return ONLY JSON:
   ]
 }
 
-Only suggest titles explicitly supported by the results.
+Only suggest titles supported by results.
 An empty array is acceptable.
 `;
 
@@ -504,6 +458,54 @@ An empty array is acceptable.
   return r.ok
     ? sanitize(parseJSON(r.text) || {}).candidates
     : [];
+}
+
+function lensEvidence(candidate, lens) {
+  const title = norm(candidate.title);
+
+  if (!title || !lens?.matches?.length) {
+    return {
+      score: 0,
+      count: 0,
+      exact: 0,
+      sources: []
+    };
+  }
+
+  const matched = lens.matches.filter(x => {
+    const text = norm(x.title);
+
+    return text === title ||
+      (
+        title.length >= 8 &&
+        (` ${text} `).includes(` ${title} `)
+      );
+  });
+
+  const domains = new Set();
+  let exact = 0;
+
+  for (const row of matched) {
+    if (row.matchKind === "exact") exact++;
+
+    try {
+      if (row.link) {
+        domains.add(
+          new URL(row.link).hostname.replace(/^www\./, "")
+        );
+      }
+    } catch {}
+  }
+
+  return {
+    score:
+      Math.min(4, matched.length) +
+      Math.min(2, domains.size) +
+      Math.min(2, exact),
+    count: matched.length,
+    exact,
+    sources: [...domains]
+  };
 }
 
 // -------------------------------------------------
@@ -569,15 +571,12 @@ async function amodb(title, type, key, year) {
         return {
           item,
           y,
-          diff:
-            year && y
-              ? Math.abs(year - y)
-              : null
+          diff: year && y
+            ? Math.abs(year - y)
+            : null
         };
       })
-      .filter(x =>
-        x.diff === null || x.diff <= 1
-      )
+      .filter(x => x.diff === null || x.diff <= 1)
       .sort((a, b) =>
         (a.diff ?? 2) - (b.diff ?? 2)
       );
@@ -593,8 +592,7 @@ async function amodb(title, type, key, year) {
       type,
       poster_path: item.poster_path || null,
       posterUrl: posterUrl(item.poster_path),
-      overview:
-        String(item.overview || "").slice(0, 350)
+      overview: String(item.overview || "").slice(0, 350)
     };
   } catch {
     return null;
@@ -620,50 +618,33 @@ async function matchCandidate(c, key) {
     );
   }
 
-  return {
-    ...c,
-    match
-  };
+  return { ...c, match };
 }
 
 // -------------------------------------------------
-// GEMINI WEB DISCOVERY
+// GEMINI DISCOVERY
 // -------------------------------------------------
 
 async function discover(rec, clues, key) {
   const prompt = `
-Find possible movie or television productions for
-this screenshot using Google Search.
+Find possible movie or TV productions for this screenshot
+using Google Search.
 
-Search the exact dialogue first.
-Then search distinctive visual clues.
+Search exact dialogue first, then distinctive visual clues.
 
-Investigate promotional social-media text as a lead,
-including captions, accounts, and hashtags.
-
-These clues can suggest productions but do not prove
-that the screenshot came from them.
+Social-media captions, accounts, and hashtags are
+search leads, not proof of the actual scene.
 
 Do not anchor on initial AI guesses.
 
-Visual frame:
-${rec.visualEvidence}
-
-Dialogue:
-${rec.dialogue || "none"}
-
-Social-media text:
-${rec.socialContext || "none"}
-
-User clues:
-${clues || "none"}
+Visual frame: ${rec.visualEvidence}
+Dialogue: ${rec.dialogue || "none"}
+Social text: ${rec.socialContext || "none"}
+User clues: ${clues || "none"}
 
 Return up to five candidate productions.
 
-Never invent citations or claim scene verification.
-
 Return JSON:
-
 {
   "candidates": [
     {
@@ -676,9 +657,10 @@ Return JSON:
   "notes": "uncertainties"
 }
 
-If JSON is unavailable, return lines in this format:
-
+If JSON is unavailable, return:
 TITLE: title | TYPE: movie | REASON: explanation
+
+Never invent citations or claim scene verification.
 `;
 
   const r = await callGemini(
@@ -689,11 +671,6 @@ TITLE: title | TYPE: movie | REASON: explanation
   );
 
   if (!r.ok) {
-    console.warn(
-      "SceneFinder discovery unavailable",
-      r.status
-    );
-
     return {
       candidates: [],
       sources: [],
@@ -702,35 +679,28 @@ TITLE: title | TYPE: movie | REASON: explanation
   }
 
   const parsed = parseJSON(r.text);
-
   let found = sanitize(parsed || {}).candidates;
 
   if (!found.length) {
-    found = r.text
-      .split("\n")
+    found = r.text.split("\n")
       .map(line => {
         const m = line.match(
           /^\s*(?:[-*]\s*)?TITLE\s*:\s*([^|\n]+)(?:\|\s*TYPE\s*:\s*(movie|tv))?(?:\s*\|\s*REASON\s*:\s*(.*))?/i
         );
 
-        return m
-          ? {
-              title: m[1].trim(),
-              year: null,
-              type: m[2] === "tv" ? "tv" : "movie",
-              reason:
-                (m[3] || "Search lead; unverified")
-                  .slice(0, 350)
-            }
-          : null;
+        return m ? {
+          title: m[1].trim(),
+          year: null,
+          type: m[2] === "tv" ? "tv" : "movie",
+          reason:
+            (m[3] || "Search lead; unverified").slice(0, 350)
+        } : null;
       })
       .filter(Boolean)
       .slice(0, 5);
   }
 
-  const sources = (
-    r.grounding?.groundingChunks || []
-  )
+  const sources = (r.grounding?.groundingChunks || [])
     .map(x => x?.web?.uri)
     .filter(x =>
       typeof x === "string" &&
@@ -741,50 +711,41 @@ TITLE: title | TYPE: movie | REASON: explanation
   return {
     candidates: found,
     sources,
-    notes:
-      String(parsed?.notes || "").slice(0, 350)
+    notes: String(parsed?.notes || "").slice(0, 350)
   };
 }
 
 // -------------------------------------------------
-// RESULT VERIFICATION
+// SEARCH VERIFICATION
 // -------------------------------------------------
 
 async function verify(rec, items, clues, key) {
   if (!items.length) return null;
 
   const prompt = `
-Research whether this film or television screenshot
+Research whether a specific movie or TV screenshot
 matches one of these productions:
 
 ${items.map(x =>
     `${x.title} (${x.year || "year unknown"})`
   ).join("; ")}
 
-Visual details:
-${rec.visualEvidence}
-
-Social-media leads:
-${rec.socialContext || "none"}
-
-Dialogue:
-${rec.dialogue || "none"}
-
-User clues:
-${clues || "none"}
+Visual details: ${rec.visualEvidence}
+Social leads: ${rec.socialContext || "none"}
+Exact dialogue: ${rec.dialogue || "none"}
+User clues: ${clues || "none"}
 
 Use Google Search.
 
 A title listing, actor resemblance, cast credit,
-generic plot, caption, or search query is not proof.
+generic plot, caption, or hashtag is NOT verification.
 
-Only identify a production when evidence connects
-distinctive scene details or dialogue to its title.
+Only identify a production if search evidence connects
+distinctive scene details or dialogue to that title.
 
 If evidence is inadequate, say UNKNOWN.
 
 Reply exactly:
-
 TITLE: title or UNKNOWN
 STATUS: SUPPORTED or UNCERTAIN
 EVIDENCE: short specific evidence
@@ -807,14 +768,10 @@ LIMITATIONS: short explanation
       /^\s*(TITLE|STATUS|EVIDENCE|LIMITATIONS)\s*:\s*(.*)$/i
     );
 
-    if (m) {
-      fields[m[1].toUpperCase()] = m[2].trim();
-    }
+    if (m) fields[m[1].toUpperCase()] = m[2].trim();
   }
 
-  const sources = (
-    r.grounding?.groundingChunks || []
-  )
+  const sources = (r.grounding?.groundingChunks || [])
     .map(x => x?.web?.uri)
     .filter(x =>
       typeof x === "string" &&
@@ -824,13 +781,11 @@ LIMITATIONS: short explanation
 
   return {
     title: fields.TITLE || null,
-
     supported:
       fields.STATUS?.toUpperCase() === "SUPPORTED" &&
       sources.length > 0 &&
       !!fields.TITLE &&
       norm(fields.TITLE) !== "unknown",
-
     evidence: fields.EVIDENCE || "",
     limitations: fields.LIMITATIONS || "",
     sources
@@ -838,7 +793,7 @@ LIMITATIONS: short explanation
 }
 
 // -------------------------------------------------
-// MAIN SCENEFINDER ENDPOINT
+// MAIN API ENDPOINT
 // -------------------------------------------------
 
 export default async function handler(req, res) {
@@ -891,10 +846,7 @@ export default async function handler(req, res) {
       }
     }
 
-    const {
-      image,
-      clues = ""
-    } = body || {};
+    const { image, clues = "" } = body || {};
 
     if (
       typeof clues !== "string" ||
@@ -919,7 +871,6 @@ export default async function handler(req, res) {
       });
     }
 
-    // Existing Gemini visual recognition.
     const first = await vision([
       { text: visionPrompt(clues) },
       { inline_data: imageData }
@@ -942,25 +893,14 @@ export default async function handler(req, res) {
 
     const rec = sanitize(first.data);
 
-    // New Google Lens visual search.
-    // Automatically returns null if unavailable.
     const lens = await googleLens(
       imageData,
       process.env.SERPAPI_API_KEY
     );
 
-    const lensFound = await lensCandidates(
-      lens,
-      rec,
-      key
-    );
+    const lensFound = await lensCandidates(lens, rec, key);
 
-    // Existing Gemini search discovery.
-    const discovery = await discover(
-      rec,
-      clues,
-      key
-    );
+    const discovery = await discover(rec, clues, key);
 
     let all = [
       ...lensFound,
@@ -968,16 +908,14 @@ export default async function handler(req, res) {
       ...discovery.candidates
     ];
 
-    // Second Gemini pass when no candidates exist.
     if (!all.length) {
       const retry = await vision([
         {
           text: `Independently analyze this movie or TV screenshot.
 
-Use actual visual details and social-media
-promotional text as search leads, not proof.
-
 Suggest up to three plausible titles.
+Use actual visual details.
+Treat social-media captions as leads, not proof.
 Do not force a guess.
 
 Return JSON with candidates containing
@@ -1022,13 +960,20 @@ Dialogue: ${rec.dialogue || "none"}`
       })
       .slice(0, 6);
 
+    const ranked = unique
+      .map(c => ({
+        ...c,
+        lensEvidence: lensEvidence(c, lens)
+      }))
+      .sort((a, b) =>
+        b.lensEvidence.score - a.lensEvidence.score
+      );
+
     const [results, verification] = await Promise.all([
       Promise.all(
-        unique.map(c =>
-          matchCandidate(c, amodbKey)
-        )
+        ranked.map(c => matchCandidate(c, amodbKey))
       ),
-      verify(rec, unique, clues, key)
+      verify(rec, ranked, clues, key)
     ]);
 
     let selected = null;
@@ -1047,7 +992,33 @@ Dialogue: ${rec.dialogue || "none"}`
       ) || null;
     }
 
-    const primary = selected?.match || null;
+    const best = results[0] || null;
+
+    // Lens leads can produce a likely identification,
+    // but they do not independently verify the frame.
+    const candidate =
+      selected ||
+      (best?.lensEvidence?.count ? best : null);
+
+    const confirmed = Boolean(
+      selected &&
+      (
+        rec.imageType === "poster" ||
+        verification?.supported
+      )
+    );
+
+    const confidence = confirmed
+      ? (
+          selected.lensEvidence?.score >= 4
+            ? "High" : "Medium"
+        )
+      : (
+          candidate?.lensEvidence?.score >= 4
+            ? "Medium" : "Low"
+        );
+
+    const primary = candidate?.match || null;
 
     const sources = [...new Set([
       ...(discovery.sources || []),
@@ -1061,52 +1032,54 @@ Dialogue: ${rec.dialogue || "none"}`
       reason: x.reason,
       overview: x.match?.overview || null,
       posterUrl: x.match?.posterUrl || null,
-      verified: Boolean(selected && x === selected)
+      verified: Boolean(confirmed && x === selected),
+      confidence:
+        x === candidate ? confidence : "Low",
+      lensEvidenceCount:
+        x.lensEvidence?.count || 0
     }));
 
-    const uncertain = !selected;
+    const uncertain = !confirmed;
 
     const answer = uncertain
-      ? "No reliable title identified from this screenshot. Review possible matches or try another frame."
-      : `Possible identification: ${primary?.title || selected.title}. Search support is not independent proof.`;
+      ? (
+          candidate
+            ? `Likely match: ${primary?.title || candidate.title}. Visual search suggests this title, but the exact scene is not verified.`
+            : "No reliable title identified from this screenshot. Review possible matches or try another frame."
+        )
+      : `Possible identification: ${primary?.title || selected.title}. Supporting search evidence is not proof of an exact frame match.`;
 
     return send(res, 200, {
       success: true,
       answer,
 
-      title: selected
-        ? (primary?.title || selected.title)
+      title: candidate
+        ? (primary?.title || candidate.title)
         : null,
 
-      year: selected
-        ? (primary?.year || selected.year || null)
+      year: candidate
+        ? (primary?.year || candidate.year || null)
         : null,
 
-      type: selected
-        ? (primary?.type || selected.type)
+      type: candidate
+        ? (primary?.type || candidate.type)
         : null,
 
-      confidence:
-        uncertain ? "Low" : rec.confidence,
-
+      confidence,
       identificationUncertain: uncertain,
 
       visualEvidence: rec.visualEvidence,
       dialogue: rec.dialogue,
       socialContext: rec.socialContext,
 
-      discoveryStatus:
-        discovery.status || "ok",
-
+      discoveryStatus: discovery.status || "ok",
       verificationEvidence:
         verification?.evidence || null,
-
       verificationLimitations:
         verification?.limitations || null,
 
       possibleMatches,
 
-      // New Google Lens visual results.
       visualMatches: lens?.matches || [],
       visualSearchUsed: Boolean(lens),
       visualSearchProvider:
@@ -1119,7 +1092,15 @@ Dialogue: ${rec.dialogue || "none"}`
       overview: primary?.overview || null,
       movieId: primary?.id || null,
 
-      verified: false,
+      verified: confirmed,
+
+      verificationMethod: confirmed
+        ? (
+            rec.imageType === "poster"
+              ? "visible_poster_title"
+              : "grounded_search"
+          )
+        : null,
 
       model: first.model,
       fallbackUsed: first.fallbackUsed,
