@@ -1,5 +1,5 @@
 
-/* ReelRadar SceneFinder V5.7 — Lens + Gemini + AMODB */
+/* ReelRadar SceneFinder V5.8 — Lens + Gemini + AMODB */
 const MODEL = process.env.SCENEFINDER_MODEL || 'gemini-3.5-flash-lite';
 const SEARCH_MODEL = process.env.SCENEFINDER_SEARCH_MODEL || 'gemini-3.8-flash';
 const MODELS = [...new Set([MODEL, SEARCH_MODEL, ...(process.env.SCENEFINDER_FALLBACK_MODELS || '').split(',').map(x => x.trim()).filter(Boolean)])];
@@ -211,6 +211,19 @@ function lensEvidence(title, lens) {
   }
   return { count: rows.length, exact, score: Math.min(rows.length, 4) + Math.min(domains.size, 2) + Math.min(exact, 2) };
 }
+// V5.8: An exact Lens result can be evidence for the uploaded image.
+// Ordinary title mentions, posters and metadata do not verify a scene.
+function sceneEvidence(title, lens) {
+  const rows = (lens?.matches || []).filter(x =>
+    x.matchKind === 'exact' && norm(title).length >= 4 &&
+    norm(x.title).includes(norm(title)) && x.link
+  );
+  const domains = new Set();
+  for (const row of rows) {
+    try { domains.add(new URL(row.link).hostname.replace(/^www\./, '')); } catch {}
+  }
+  return { exactTitleMatches: rows.length, independentDomains: domains.size };
+}
 function posterUrl(path) {
   if (typeof path !== 'string') return null;
   if (path.startsWith('https://')) return path;
@@ -326,7 +339,7 @@ export default async function handler(req, res) {
     const lensKey = process.env.SERPAPI_API_KEY;
     const amodbKey = process.env.AMODB_API_KEY;
     if (!geminiKey && !lensKey) return send(res, 503, { error: 'SceneFinder is not configured' });
-    console.log('SceneFinder V5.7 started');
+    console.log('SceneFinder V5.8 started');
     const [lens, first] = await Promise.all([
       googleLens(imageData, lensKey),
       geminiKey ? recognize(imageData, clues, geminiKey) : Promise.resolve({ ok: false, status: 503, data: sanitize({}) })
@@ -358,11 +371,23 @@ export default async function handler(req, res) {
     });
     let verification = null;
     if (geminiKey && first.ok && results.length && (results[0].lensEvidence.score >= 2 || rec.dialogue || rec.imageType === 'poster')) verification = await verifyScene(rec, results.slice(0, 3), clues, geminiKey);
-    const verifiedCandidate = verification?.supported ? results.find(x => sameTitle(x.title, verification.title)) : null;
-    const posterCandidate = rec.imageType === 'poster' && rec.visibleTitle ? results.find(x => sameTitle(x.title, rec.visibleTitle)) : null;
-    const selected = verifiedCandidate || posterCandidate || results.find(x => x.lensEvidence.count > 0) || results[0] || null;
-    const supported = Boolean(verifiedCandidate || posterCandidate);
-    const confidence = supported ? selected?.lensEvidence.score >= 4 ? 'High' : 'Medium' : selected?.lensEvidence.score >= 3 ? 'Medium' : 'Low';
+    const groundedCandidate = verification?.supported
+      ? results.find(x => sameTitle(x.title, verification.title)) : null;
+    const posterCandidate = rec.imageType === 'poster' && rec.visibleTitle
+      ? results.find(x => sameTitle(x.title, rec.visibleTitle)) : null;
+    const selected = groundedCandidate || posterCandidate ||
+      results.find(x => x.lensEvidence.count > 0) || results[0] || null;
+    const sceneProof = selected ? sceneEvidence(selected.title, lens) :
+      { exactTitleMatches: 0, independentDomains: 0 };
+    // Two independent exact-image sources, or one exact-image source
+    // corroborated by grounded research, are required for scene verification.
+    const supported = Boolean(selected && rec.imageType !== 'poster' &&
+      sceneProof.exactTitleMatches >= 1 &&
+      (sceneProof.independentDomains >= 2 ||
+       (groundedCandidate === selected && verification?.supported)));
+    const confidence = supported ? 'High' : selected &&
+      (selected.lensEvidence.score >= 3 || groundedCandidate === selected ||
+       posterCandidate === selected) ? 'Medium' : 'Low';
     const primary = selected?.match || null;
     const possibleMatches = results.map(x => ({
       title: x.title, year: x.year, type: x.type, reason: x.reason,
@@ -371,35 +396,37 @@ export default async function handler(req, res) {
       lensEvidenceCount: x.lensEvidence.count
     }));
     const sources = [...new Set(verification?.sources || [])].slice(0, 5);
-    const answer = supported ? `Possible identification: ${selected.title}. Scene evidence may still require confirmation.` : selected ? `Possible match: ${selected.title}. The production exists, but this screenshot remains unverified.` : lens?.matches?.length ? 'Google Lens found results, but no production could be validated.' : 'No reliable title found. Try another screenshot.';
+    const answer = supported ? `Scene match verified by corroborating visual evidence: ${selected.title}.` : selected ? `Possible match: ${selected.title}. The production exists, but this screenshot remains unverified.` : lens?.matches?.length ? 'Google Lens found results, but no production could be validated.' : 'No reliable title found. Try another screenshot.';
     const diagnostics = {
-      version: '5.7', lensStatus: lens ? 'ok' : lensKey ? Date.now() < lensCooldown ? 'quota_cooldown' : 'unavailable' : 'not_configured',
+      version: '5.8', lensStatus: lens ? 'ok' : lensKey ? Date.now() < lensCooldown ? 'quota_cooldown' : 'unavailable' : 'not_configured',
       lensResults: lens?.matches?.length || 0, geminiStatus: first.ok ? 'ok' : `unavailable_${first.status}`,
       rawCandidates: rawCandidates.length, validatedCandidates: results.length,
       metadataStatus: amodbKey ? 'configured' : 'not_configured',
       verificationStatus: verification ? 'completed' : 'not_completed', parallelDiscovery: true,
-      metadataSelection: 'title_type_year_popularity_poster_context'
+      metadataSelection: 'title_type_year_popularity_poster_context',
+      sceneExactTitleMatches: sceneProof.exactTitleMatches,
+      sceneIndependentDomains: sceneProof.independentDomains
     };
-    console.log('SceneFinder V5.7 diagnostics', JSON.stringify(diagnostics));
+    console.log('SceneFinder V5.8 diagnostics', JSON.stringify(diagnostics));
     return send(res, 200, {
       success: true, answer, title: selected?.title || null, year: selected?.year || null,
       type: selected?.type || null, confidence, identificationUncertain: !supported,
       visualEvidence: rec.visualEvidence, dialogue: rec.dialogue, socialContext: rec.socialContext,
       discoveryStatus: first.ok ? 'ok' : 'gemini_unavailable',
-      verificationEvidence: verification?.evidence || null,
+      verificationEvidence: supported ? `Google Lens exact-image matches: ${sceneProof.exactTitleMatches}; independent sources: ${sceneProof.independentDomains}. ${verification?.evidence || ''}`.trim() : verification?.evidence || null,
       verificationLimitations: verification?.limitations || null,
       possibleMatches, visualMatches: lens?.matches || [], visualSearchUsed: Boolean(lens),
       visualSearchProvider: lens ? 'SerpApi Google Lens' : null,
       posterUrl: primary?.posterUrl || null, poster: primary?.posterUrl || null,
       poster_path: primary?.poster_path || null, overview: primary?.overview || null,
       movieId: primary?.id || null, verified: supported,
-      verificationMethod: verifiedCandidate ? 'grounded_search' : posterCandidate ? 'visible_poster_title' : null,
+      verificationMethod: supported ? 'lens_exact_image_corroboration' : null,
       model: first.model || null, fallbackUsed: Boolean(first.fallbackUsed),
       searchGrounded: sources.length > 0, sources, metadataProvider: amodbKey ? 'AMODB' : null,
       metadataMatches: results.map(x => x.match).filter(Boolean), diagnostics
     });
   } catch (e) {
-    console.error('SceneFinder V5.7 error', e.message);
+    console.error('SceneFinder V5.8 error', e.message);
     return send(res, 500, { error: 'SceneFinder encountered an unexpected error' });
   }
 }
