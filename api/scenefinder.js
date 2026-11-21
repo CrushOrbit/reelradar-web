@@ -1,8 +1,16 @@
 
 /*
- * ReelRadar SceneFinder V5.9
+ * ReelRadar SceneFinder V6.0
  * Google Lens + Gemini + AMODB
- * Candidate recovery + conservative verification
+ *
+ * Preserves V5.9 candidate recovery, metadata,
+ * posters, synopsis and fallback models.
+ *
+ * V6.0:
+ * - Always attempts verification for validated scenes
+ * - Adds strong possible match classification
+ * - Separates scene verification from metadata matching
+ * - Preserves existing frontend response fields
  *
  * Environment variables:
  * GEMINI_API_KEY
@@ -13,7 +21,7 @@
  * SCENEFINDER_FALLBACK_MODELS (optional)
  */
 
-const VERSION = '5.9';
+const VERSION = '6.0';
 
 const MODEL =
   process.env.SCENEFINDER_MODEL ||
@@ -67,7 +75,11 @@ function sameTitle(a, b) {
 }
 
 function validYear(value) {
-  if (value === null || value === undefined || value === '') {
+  if (
+    value === null ||
+    value === undefined ||
+    value === ''
+  ) {
     return null;
   }
 
@@ -126,7 +138,9 @@ function parseImage(image) {
 
   const data = match[2].replace(/\s/g, '');
 
-  if (!data || data.length % 4 !== 0) return null;
+  if (!data || data.length % 4 !== 0) {
+    return null;
+  }
 
   return {
     mime_type:
@@ -272,7 +286,11 @@ async function googleLens(image, key) {
           lensCooldown = Date.now() + 3600000;
         }
 
-        console.warn('Lens upload failed', response.status);
+        console.warn(
+          'Lens upload failed',
+          response.status
+        );
+
         return null;
       }
     } finally {
@@ -311,7 +329,11 @@ async function googleLens(image, key) {
           lensCooldown = Date.now() + 3600000;
         }
 
-        console.warn('Lens search failed', response.status);
+        console.warn(
+          'Lens search failed',
+          response.status
+        );
+
         return null;
       }
 
@@ -342,14 +364,23 @@ async function googleLens(image, key) {
       clearTimeout(timer);
     }
   } catch (error) {
-    console.warn('Lens unavailable', error.message);
+    console.warn(
+      'Lens unavailable',
+      error.message
+    );
+
     return null;
   }
 }
 
 /* ---------- Gemini ---------- */
 
-async function callGemini(model, parts, key, search = false) {
+async function callGemini(
+  model,
+  parts,
+  key,
+  search = false
+) {
   if (!key) {
     return { ok: false, status: 503 };
   }
@@ -417,17 +448,26 @@ async function callGemini(model, parts, key, search = false) {
           };
         }
 
-        return { ok: false, status: 502 };
+        return {
+          ok: false,
+          status: 502
+        };
       }
 
-      console.warn('Gemini', model, response.status);
+      console.warn(
+        'Gemini',
+        model,
+        response.status
+      );
 
       if (response.status === 429) {
         const exhausted =
           /quota exceeded|free.tier|per.day|per day/i
             .test(JSON.stringify(data.error || {}));
 
-        let cooldown = exhausted ? 3600000 : 60000;
+        let cooldown = exhausted
+          ? 3600000
+          : 60000;
 
         const retry = Number(
           response.headers.get('retry-after')
@@ -451,9 +491,15 @@ async function callGemini(model, parts, key, search = false) {
           }
         }
 
-        cooldowns.set(model, Date.now() + cooldown);
+        cooldowns.set(
+          model,
+          Date.now() + cooldown
+        );
 
-        return { ok: false, status: 429 };
+        return {
+          ok: false,
+          status: 429
+        };
       }
 
       if (
@@ -479,21 +525,34 @@ async function callGemini(model, parts, key, search = false) {
         continue;
       }
 
-      return { ok: false, status: 503 };
+      return {
+        ok: false,
+        status: 503
+      };
     } finally {
       clearTimeout(timer);
     }
   }
 
-  return { ok: false, status: 503 };
+  return {
+    ok: false,
+    status: 503
+  };
 }
 
-async function geminiFallback(parts, key, search = false) {
+async function geminiFallback(
+  parts,
+  key,
+  search = false
+) {
   const order = search
     ? [...new Set([SEARCH_MODEL, ...MODELS])]
     : MODELS;
 
-  let last = { ok: false, status: 503 };
+  let last = {
+    ok: false,
+    status: 503
+  };
 
   for (const model of order) {
     last = await callGemini(
@@ -613,7 +672,10 @@ function extractLensHints(lens) {
       if (match) extracted.push(match[1]);
     }
 
-    if (/\b(?:movie|film|series|drama|trailer)\b/i.test(text)) {
+    if (
+      /\b(?:movie|film|series|drama|trailer)\b/i
+        .test(text)
+    ) {
       for (const match of text.matchAll(
         /["“‘']([^"”’']{3,70})["”’']/g
       )) {
@@ -630,7 +692,10 @@ function extractLensHints(lens) {
         )
         .trim();
 
-      if (title.length < 3 || title.length > 65) {
+      if (
+        title.length < 3 ||
+        title.length > 65
+      ) {
         continue;
       }
 
@@ -638,7 +703,8 @@ function extractLensHints(lens) {
         title,
         year: null,
         type: tv ? 'tv' : null,
-        reason: 'Production title lead from Google Lens',
+        reason:
+          'Production title lead from Google Lens',
         source: 'lens'
       });
 
@@ -801,7 +867,10 @@ async function groundedRecovery(
     clues
   ].filter(Boolean).join(' ');
 
-  if (!description && !lens?.matches?.length) {
+  if (
+    !description &&
+    !lens?.matches?.length
+  ) {
     return [];
   }
 
@@ -890,11 +959,15 @@ function lensEvidence(title, lens) {
   let exact = 0;
 
   for (const row of rows) {
-    if (row.matchKind === 'exact') exact++;
+    if (row.matchKind === 'exact') {
+      exact++;
+    }
 
     try {
       if (row.link) {
-        domains.add(new URL(row.link).hostname);
+        domains.add(
+          new URL(row.link).hostname
+        );
       }
     } catch {}
   }
@@ -922,7 +995,9 @@ function sceneEvidence(title, lens) {
   for (const row of rows) {
     try {
       domains.add(
-        new URL(row.link).hostname.replace(/^www\./, '')
+        new URL(row.link)
+          .hostname
+          .replace(/^www\./, '')
       );
     } catch {}
   }
@@ -936,12 +1011,19 @@ function sceneEvidence(title, lens) {
 /* ---------- AMODB ---------- */
 
 function posterUrl(path) {
-  if (typeof path !== 'string') return null;
+  if (typeof path !== 'string') {
+    return null;
+  }
 
-  if (path.startsWith('https://')) return path;
+  if (path.startsWith('https://')) {
+    return path;
+  }
 
   if (path.startsWith('/')) {
-    return 'https://image.tmdb.org/t/p/w500' + path;
+    return (
+      'https://image.tmdb.org/t/p/w500' +
+      path
+    );
   }
 
   return null;
@@ -949,8 +1031,12 @@ function posterUrl(path) {
 
 function movieMetadata(item, title, type) {
   const date = type === 'tv'
-    ? item.first_air_date || item.release_date || ''
-    : item.release_date || item.first_air_date || '';
+    ? item.first_air_date ||
+      item.release_date ||
+      ''
+    : item.release_date ||
+      item.first_air_date ||
+      '';
 
   const year = /^\d{4}/.test(date)
     ? Number(date.slice(0, 4))
@@ -958,31 +1044,55 @@ function movieMetadata(item, title, type) {
 
   return {
     id: item.id,
+
     title: formatTitle(
-      item.title || item.name || title
+      item.title ||
+      item.name ||
+      title
     ),
+
     year,
     type,
-    poster_path: item.poster_path || null,
-    posterUrl: posterUrl(item.poster_path),
+
+    poster_path:
+      item.poster_path || null,
+
+    posterUrl:
+      posterUrl(item.poster_path),
+
     overview:
       String(item.overview || '').slice(0, 350),
-    popularity: Number(item.popularity) || 0,
-    vote_count: Number(item.vote_count) || 0
+
+    popularity:
+      Number(item.popularity) || 0,
+
+    vote_count:
+      Number(item.vote_count) || 0
   };
 }
 
-function metadataScore(meta, expectedYear, context = '') {
+function metadataScore(
+  meta,
+  expectedYear,
+  context = ''
+) {
   let score = 0;
 
   if (expectedYear && meta.year) {
     const difference =
       Math.abs(expectedYear - meta.year);
 
-    if (difference > 1) return -Infinity;
+    if (difference > 1) {
+      return -Infinity;
+    }
 
-    score += difference === 0 ? 100 : 35;
-  } else if (expectedYear && !meta.year) {
+    score += difference === 0
+      ? 100
+      : 35;
+  } else if (
+    expectedYear &&
+    !meta.year
+  ) {
     score -= 30;
   }
 
@@ -991,23 +1101,34 @@ function metadataScore(meta, expectedYear, context = '') {
 
   score += Math.min(
     15,
-    Math.log1p(Math.max(0, meta.popularity)) * 2
+    Math.log1p(
+      Math.max(0, meta.popularity)
+    ) * 2
   );
 
   score += Math.min(
     8,
-    Math.log1p(Math.max(0, meta.vote_count))
+    Math.log1p(
+      Math.max(0, meta.vote_count)
+    )
   );
 
   const words =
-    String(context).toLowerCase().match(/[a-z]{5,}/g) || [];
+    String(context)
+      .toLowerCase()
+      .match(/[a-z]{5,}/g) || [];
 
-  const unique = [...new Set(words)].slice(0, 35);
-  const overview = meta.overview.toLowerCase();
+  const unique =
+    [...new Set(words)].slice(0, 35);
+
+  const overview =
+    meta.overview.toLowerCase();
 
   score += Math.min(
     6,
-    unique.filter(word => overview.includes(word)).length * 2
+    unique.filter(word =>
+      overview.includes(word)
+    ).length * 2
   );
 
   return score;
@@ -1020,7 +1141,9 @@ async function amodb(
   year,
   context = ''
 ) {
-  if (!key || !title) return null;
+  if (!key || !title) {
+    return null;
+  }
 
   const controller = new AbortController();
   const timer = setTimeout(
@@ -1047,7 +1170,12 @@ async function amodb(
     });
 
     if (!response.ok) {
-      console.warn('AMODB', type, response.status);
+      console.warn(
+        'AMODB',
+        type,
+        response.status
+      );
+
       return null;
     }
 
@@ -1064,9 +1192,17 @@ async function amodb(
           item.name,
           item.original_title,
           item.original_name
-        ].some(name => sameTitle(name, title))
+        ].some(name =>
+          sameTitle(name, title)
+        )
       )
-      .map(item => movieMetadata(item, title, type))
+      .map(item =>
+        movieMetadata(
+          item,
+          title,
+          type
+        )
+      )
       .map(item => ({
         ...item,
         metadataScore: metadataScore(
@@ -1076,15 +1212,22 @@ async function amodb(
         )
       }))
       .filter(item =>
-        Number.isFinite(item.metadataScore)
+        Number.isFinite(
+          item.metadataScore
+        )
       )
       .sort((a, b) =>
-        b.metadataScore - a.metadataScore
+        b.metadataScore -
+        a.metadataScore
       );
 
     return rows[0] || null;
   } catch (error) {
-    console.warn('AMODB unavailable', error.message);
+    console.warn(
+      'AMODB unavailable',
+      error.message
+    );
+
     return null;
   } finally {
     clearTimeout(timer);
@@ -1097,8 +1240,11 @@ async function validateCandidate(
   lens,
   context = ''
 ) {
-  const title = formatTitle(candidate.title);
-  const evidence = typeEvidence(title, lens);
+  const title =
+    formatTitle(candidate.title);
+
+  const evidence =
+    typeEvidence(title, lens);
 
   const tvStrong =
     evidence.tv >= 2 &&
@@ -1111,7 +1257,9 @@ async function validateCandidate(
   const types = preferred
     ? [
         preferred,
-        preferred === 'tv' ? 'movie' : 'tv'
+        preferred === 'tv'
+          ? 'movie'
+          : 'tv'
       ]
     : ['movie', 'tv'];
 
@@ -1127,7 +1275,8 @@ async function validateCandidate(
     )
   );
 
-  let eligible = matches.filter(Boolean);
+  let eligible =
+    matches.filter(Boolean);
 
   if (tvStrong) {
     eligible = eligible.filter(x =>
@@ -1135,30 +1284,39 @@ async function validateCandidate(
     );
   } else if (
     candidate.type &&
-    eligible.some(x => x.type === candidate.type)
+    eligible.some(x =>
+      x.type === candidate.type
+    )
   ) {
     eligible = eligible.filter(x =>
       x.type === candidate.type
     );
   }
 
-  if (!eligible.length) return null;
+  if (!eligible.length) {
+    return null;
+  }
 
   const match = eligible.sort(
-    (a, b) => b.metadataScore - a.metadataScore
+    (a, b) =>
+      b.metadataScore -
+      a.metadataScore
   )[0];
 
   return {
     ...candidate,
     title: match.title,
-    year: match.year || candidate.year || null,
+    year:
+      match.year ||
+      candidate.year ||
+      null,
     type: match.type,
     match,
     typeEvidence: evidence
   };
 }
 
-/* ---------- Grounded verification ---------- */
+/* ---------- V6.0 grounded verification ---------- */
 
 async function verifyScene(
   rec,
@@ -1175,35 +1333,60 @@ async function verifyScene(
   }
 
   const prompt = `
-Use Google Search to investigate which production
-matches this screenshot.
+You are ReelRadar's independent scene-verification researcher.
 
-Candidates:
+Use Google Search to investigate whether the
+described screenshot belongs to a candidate production.
+
+CANDIDATES:
 ${candidates.map(x =>
-  `${x.title} (${x.year || 'unknown'}, ${x.type})`
-).join('; ')}
+  `${x.title} (${x.year || 'unknown year'}, ${x.type})`
+).join('\n')}
 
-Scene:
+SCREENSHOT DESCRIPTION:
 ${rec.visualEvidence}
 
-Dialogue:
+VISIBLE DIALOGUE:
 ${rec.dialogue || 'none'}
 
-Overlay:
+SOCIAL MEDIA CONTEXT:
 ${rec.socialContext || 'none'}
 
-User clues:
+USER CLUES:
 ${clues || 'none'}
 
-A title, actor credit, caption or generic plot
-does NOT prove the exact screenshot belongs to
-a production.
+VERIFICATION RULES:
 
-Return:
-TITLE: title or UNKNOWN
-STATUS: SUPPORTED or UNCERTAIN
-EVIDENCE: specific evidence
-LIMITATIONS: uncertainty
+1. A matching title, poster, cast list or generic
+   synopsis does not prove the exact scene.
+
+2. Look for specific scene-level evidence:
+   matching dialogue, documented scene descriptions,
+   official clips, stills or detailed scene breakdowns.
+
+3. Actor appearance alone is not proof.
+
+4. Social captions may be misleading.
+
+5. VERIFIED requires direct, specific scene evidence
+   corroborated by independently identifiable sources.
+
+6. STRONG means distinctive details support a title,
+   but direct scene confirmation is missing.
+
+7. UNCERTAIN means evidence is insufficient.
+
+8. If sources disagree, use UNCERTAIN.
+
+9. Do not claim VERIFIED merely because a movie's
+   storyline resembles the screenshot.
+
+Return exactly these lines:
+
+TITLE: production title or UNKNOWN
+STATUS: VERIFIED or STRONG or UNCERTAIN
+EVIDENCE: specific supporting evidence
+LIMITATIONS: what remains unconfirmed
 `;
 
   const result = await geminiFallback(
@@ -1212,7 +1395,9 @@ LIMITATIONS: uncertainty
     true
   );
 
-  if (!result.ok) return null;
+  if (!result.ok) {
+    return null;
+  }
 
   const fields = {};
 
@@ -1227,23 +1412,102 @@ LIMITATIONS: uncertainty
     }
   }
 
-  const sources = (
-    result.grounding?.groundingChunks || []
-  )
-    .map(x => safeUrl(x?.web?.uri))
-    .filter(Boolean)
-    .slice(0, 5);
+  const chunks =
+    result.grounding?.groundingChunks || [];
+
+  const sources = [
+    ...new Set(
+      chunks
+        .map(x => safeUrl(x?.web?.uri))
+        .filter(Boolean)
+    )
+  ].slice(0, 8);
+
+  const domains = new Set();
+
+  for (const url of sources) {
+    try {
+      domains.add(
+        new URL(url)
+          .hostname
+          .replace(/^www\./, '')
+      );
+    } catch {}
+  }
+
+  const title =
+    fields.TITLE || null;
+
+  const titleMatches =
+    candidates.some(candidate =>
+      sameTitle(
+        candidate.title,
+        title
+      )
+    );
+
+  const reportedStatus =
+    (fields.STATUS || 'UNCERTAIN')
+      .toUpperCase();
+
+  const evidence =
+    fields.EVIDENCE || '';
+
+  const limitations =
+    fields.LIMITATIONS || '';
+
+  const specificEvidence =
+    evidence.length >= 35 &&
+    !/^(unknown|none|not available|no evidence)$/i
+      .test(evidence.trim());
+
+  /*
+   * Source counts provide a corroboration threshold,
+   * not a guarantee that the sources are independent.
+   *
+   * Keep the classification conservative.
+   */
+  const verified =
+    titleMatches &&
+    reportedStatus === 'VERIFIED' &&
+    specificEvidence &&
+    domains.size >= 2;
+
+  const strong =
+    titleMatches &&
+    specificEvidence &&
+    (
+      verified ||
+      reportedStatus === 'STRONG' ||
+      (
+        reportedStatus === 'VERIFIED' &&
+        domains.size >= 1
+      )
+    );
 
   return {
-    title: fields.TITLE || null,
-    supported:
-      fields.STATUS?.toUpperCase() === 'SUPPORTED' &&
-      Boolean(fields.TITLE) &&
-      norm(fields.TITLE) !== 'unknown' &&
-      sources.length > 0,
-    evidence: fields.EVIDENCE || '',
-    limitations: fields.LIMITATIONS || '',
-    sources
+    title:
+      titleMatches
+        ? title
+        : null,
+
+    supported: verified,
+    strong,
+
+    evidence,
+    limitations,
+    sources,
+
+    independentDomains:
+      domains.size,
+
+    reportedStatus,
+
+    status: verified
+      ? 'verified'
+      : strong
+        ? 'strong'
+        : 'uncertain'
   };
 }
 
@@ -1257,10 +1521,14 @@ function mergeCandidates(candidates) {
 
     if (!id) continue;
 
-    const existing = grouped.get(id);
+    const existing =
+      grouped.get(id);
 
     if (!existing) {
-      grouped.set(id, { ...candidate });
+      grouped.set(id, {
+        ...candidate
+      });
+
       continue;
     }
 
@@ -1271,8 +1539,12 @@ function mergeCandidates(candidates) {
       existing.type = 'tv';
     }
 
-    if (!existing.year && candidate.year) {
-      existing.year = candidate.year;
+    if (
+      !existing.year &&
+      candidate.year
+    ) {
+      existing.year =
+        candidate.year;
     }
 
     const priority = {
@@ -1288,12 +1560,16 @@ function mergeCandidates(candidates) {
       (priority[candidate.source] || 0) >
       (priority[existing.source] || 0)
     ) {
-      existing.source = candidate.source;
-      existing.reason = candidate.reason;
+      existing.source =
+        candidate.source;
+
+      existing.reason =
+        candidate.reason;
     }
   }
 
-  return [...grouped.values()].slice(0, 10);
+  return [...grouped.values()]
+    .slice(0, 10);
 }
 
 function rankResults(results) {
@@ -1317,7 +1593,10 @@ function rankResults(results) {
 /* ---------- API handler ---------- */
 
 export default async function handler(req, res) {
-  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader(
+    'Cache-Control',
+    'no-store'
+  );
 
   res.setHeader(
     'Access-Control-Allow-Origin',
@@ -1371,11 +1650,13 @@ export default async function handler(req, res) {
       });
     }
 
-    const imageData = parseImage(image);
+    const imageData =
+      parseImage(image);
 
     if (imageData?.tooLarge) {
       return send(res, 413, {
-        error: 'Screenshot is too large'
+        error:
+          'Screenshot is too large'
       });
     }
 
@@ -1397,7 +1678,8 @@ export default async function handler(req, res) {
 
     if (!geminiKey && !lensKey) {
       return send(res, 503, {
-        error: 'SceneFinder is not configured'
+        error:
+          'SceneFinder is not configured'
       });
     }
 
@@ -1408,7 +1690,10 @@ export default async function handler(req, res) {
     /* First-pass discovery */
 
     const [lens, first] = await Promise.all([
-      googleLens(imageData, lensKey),
+      googleLens(
+        imageData,
+        lensKey
+      ),
 
       geminiKey
         ? recognize(
@@ -1424,7 +1709,9 @@ export default async function handler(req, res) {
     ]);
 
     const rec = first.data;
-    const lensHints = extractLensHints(lens);
+
+    const lensHints =
+      extractLensHints(lens);
 
     let lensAI = [];
 
@@ -1457,7 +1744,8 @@ export default async function handler(req, res) {
         title: rec.visibleTitle,
         year: null,
         type: null,
-        reason: 'Title printed on poster',
+        reason:
+          'Title printed on poster',
         source: 'poster'
       });
     }
@@ -1471,7 +1759,9 @@ export default async function handler(req, res) {
       .join(' ');
 
     async function validateAll(input) {
-      if (!amodbKey) return [];
+      if (!amodbKey) {
+        return [];
+      }
 
       const checked = await Promise.all(
         input.map(candidate =>
@@ -1489,10 +1779,12 @@ export default async function handler(req, res) {
           .filter(Boolean)
           .map(item => ({
             ...item,
-            lensEvidence: lensEvidence(
-              item.title,
-              lens
-            )
+
+            lensEvidence:
+              lensEvidence(
+                item.title,
+                lens
+              )
           }))
       );
     }
@@ -1500,11 +1792,12 @@ export default async function handler(req, res) {
     let rawCandidates =
       mergeCandidates(candidates);
 
-    let results = await validateAll(
-      rawCandidates
-    );
+    let results =
+      await validateAll(
+        rawCandidates
+      );
 
-    /* V5.9: recover when first pass fails */
+    /* Preserve V5.9 candidate recovery */
 
     let recoveryUsed = false;
     let recoveryCount = 0;
@@ -1516,72 +1809,71 @@ export default async function handler(req, res) {
     ) {
       recoveryUsed = true;
 
-      const recovered = await recoverCandidates(
-        imageData,
-        rec,
-        lens,
-        clues,
-        geminiKey
-      );
-
-      recoveryCount += recovered.length;
-
-      if (recovered.length) {
-        recoveryMethod = 'visual_second_pass';
-      }
-
-      rawCandidates = mergeCandidates([
-        ...rawCandidates,
-        ...recovered
-      ]);
-
-      results = await validateAll(
-        rawCandidates
-      );
-
-      /*
-       * Only use a second grounded search
-       * when visual recovery still fails.
-       */
-      if (!results.length) {
-        const grounded = await groundedRecovery(
+      const recovered =
+        await recoverCandidates(
+          imageData,
           rec,
           lens,
           clues,
           geminiKey
         );
 
-        recoveryCount += grounded.length;
+      recoveryCount +=
+        recovered.length;
+
+      if (recovered.length) {
+        recoveryMethod =
+          'visual_second_pass';
+      }
+
+      rawCandidates =
+        mergeCandidates([
+          ...rawCandidates,
+          ...recovered
+        ]);
+
+      results = await validateAll(
+        rawCandidates
+      );
+
+      if (!results.length) {
+        const grounded =
+          await groundedRecovery(
+            rec,
+            lens,
+            clues,
+            geminiKey
+          );
+
+        recoveryCount +=
+          grounded.length;
 
         if (grounded.length) {
           recoveryMethod =
             'grounded_candidate_recovery';
         }
 
-        rawCandidates = mergeCandidates([
-          ...rawCandidates,
-          ...grounded
-        ]);
+        rawCandidates =
+          mergeCandidates([
+            ...rawCandidates,
+            ...grounded
+          ]);
 
-        results = await validateAll(
-          rawCandidates
-        );
+        results =
+          await validateAll(
+            rawCandidates
+          );
       }
     }
 
-    /* Verification */
+    /* V6.0: Verify all validated scene candidates */
 
     let verification = null;
 
     if (
       geminiKey &&
-      first.ok &&
-      results.length &&
-      (
-        results[0].lensEvidence.score >= 2 ||
-        rec.dialogue ||
-        rec.imageType === 'poster'
-      )
+      results.length > 0 &&
+      rec.visualEvidence
     ) {
       verification = await verifyScene(
         rec,
@@ -1592,7 +1884,7 @@ export default async function handler(req, res) {
     }
 
     const groundedCandidate =
-      verification?.supported
+      verification?.title
         ? results.find(item =>
             sameTitle(
               item.title,
@@ -1622,77 +1914,123 @@ export default async function handler(req, res) {
       null;
 
     const sceneProof = selected
-      ? sceneEvidence(selected.title, lens)
+      ? sceneEvidence(
+          selected.title,
+          lens
+        )
       : {
           exactTitleMatches: 0,
           independentDomains: 0
         };
 
     /*
-     * Metadata alone never verifies a scene.
+     * Verification route A:
+     * Exact-image matches from multiple domains.
      *
-     * Require exact-image Lens evidence
-     * corroborated by another independent
-     * exact-image source or grounded research.
+     * Verification route B:
+     * Grounded research with scene-specific evidence.
+     *
+     * AMODB title, poster and synopsis are not
+     * sufficient for scene verification.
      */
 
-    const supported = Boolean(
+    const lensVerified = Boolean(
       selected &&
       rec.imageType !== 'poster' &&
-      sceneProof.exactTitleMatches >= 1 &&
+      sceneProof.exactTitleMatches >= 2 &&
+      sceneProof.independentDomains >= 2
+    );
+
+    const researchVerified = Boolean(
+      selected &&
+      rec.imageType !== 'poster' &&
+      groundedCandidate === selected &&
+      verification?.supported &&
+      verification?.independentDomains >= 2
+    );
+
+    const supported =
+      lensVerified ||
+      researchVerified;
+
+    const strongMatch = Boolean(
+      selected &&
+      !supported &&
       (
-        sceneProof.independentDomains >= 2 ||
         (
           groundedCandidate === selected &&
-          verification?.supported
+          verification?.strong
+        ) ||
+        (
+          sceneProof.exactTitleMatches >= 1 &&
+          selected.lensEvidence.score >= 3
         )
       )
     );
 
     const confidence = supported
       ? 'High'
-      : selected &&
-        (
-          selected.lensEvidence.score >= 3 ||
-          groundedCandidate === selected ||
-          posterCandidate === selected
-        )
+      : strongMatch
         ? 'Medium'
         : 'Low';
 
-    const primary = selected?.match || null;
+    const verificationLevel = supported
+      ? 'verified'
+      : strongMatch
+        ? 'strong'
+        : 'unverified';
 
-    const possibleMatches = results.map(item => ({
-      title: item.title,
-      year: item.year,
-      type: item.type,
-      reason: item.reason,
-      overview: item.match?.overview || null,
-      posterUrl: item.match?.posterUrl || null,
-      verified:
-        supported && item === selected,
-      confidence:
-        item === selected
-          ? confidence
-          : 'Low',
-      lensEvidenceCount:
-        item.lensEvidence.count
-    }));
+    const primary =
+      selected?.match || null;
+
+    const possibleMatches =
+      results.map(item => ({
+        title: item.title,
+        year: item.year,
+        type: item.type,
+        reason: item.reason,
+
+        overview:
+          item.match?.overview || null,
+
+        posterUrl:
+          item.match?.posterUrl || null,
+
+        verified:
+          supported &&
+          item === selected,
+
+        confidence:
+          item === selected
+            ? confidence
+            : 'Low',
+
+        verificationLevel:
+          item === selected
+            ? verificationLevel
+            : 'unverified',
+
+        lensEvidenceCount:
+          item.lensEvidence.count
+      }));
 
     const sources = [
       ...new Set(
         verification?.sources || []
       )
-    ].slice(0, 5);
+    ].slice(0, 8);
 
     let answer;
 
     if (supported) {
       answer =
-        `Scene match supported by corroborating visual evidence: ${selected.title}.`;
+        `Verified scene: ${selected.title}. Independent evidence supports this identification.`;
+    } else if (strongMatch) {
+      answer =
+        `Strong possible match: ${selected.title}. Distinctive evidence supports this identification, but the exact scene is not fully verified.`;
     } else if (selected) {
       answer =
-        `Possible match: ${selected.title}. The production exists, but this screenshot remains unverified.`;
+        `Possible match: ${selected.title}. The production was identified, but the screenshot remains unverified.`;
     } else if (lens?.matches?.length) {
       answer =
         'Google Lens found results, but no production could be validated.';
@@ -1733,6 +2071,14 @@ export default async function handler(req, res) {
         ? 'completed'
         : 'not_completed',
 
+      verificationLevel,
+
+      verificationReportedStatus:
+        verification?.reportedStatus || null,
+
+      verificationSourceDomains:
+        verification?.independentDomains || 0,
+
       parallelDiscovery: true,
 
       metadataSelection:
@@ -1756,14 +2102,24 @@ export default async function handler(req, res) {
 
     return send(res, 200, {
       success: true,
+
       answer,
 
-      title: selected?.title || null,
-      year: selected?.year || null,
-      type: selected?.type || null,
+      title:
+        selected?.title || null,
+
+      year:
+        selected?.year || null,
+
+      type:
+        selected?.type || null,
+
       confidence,
 
-      identificationUncertain: !supported,
+      verificationLevel,
+
+      identificationUncertain:
+        !supported,
 
       visualEvidence:
         rec.visualEvidence,
@@ -1779,7 +2135,13 @@ export default async function handler(req, res) {
         : 'gemini_unavailable',
 
       verificationEvidence: supported
-        ? `Google Lens exact-image matches: ${sceneProof.exactTitleMatches}; independent sources: ${sceneProof.independentDomains}. ${verification?.evidence || ''}`.trim()
+        ? (
+            `Google Lens exact-image matches: ` +
+            `${sceneProof.exactTitleMatches}; ` +
+            `independent Lens domains: ` +
+            `${sceneProof.independentDomains}. ` +
+            `${verification?.evidence || ''}`
+          ).trim()
         : verification?.evidence || null,
 
       verificationLimitations:
@@ -1812,10 +2174,13 @@ export default async function handler(req, res) {
       movieId:
         primary?.id || null,
 
-      verified: supported,
+      verified:
+        supported,
 
       verificationMethod: supported
-        ? 'lens_exact_image_corroboration'
+        ? lensVerified
+          ? 'lens_exact_image_corroboration'
+          : 'grounded_scene_research'
         : null,
 
       model:
